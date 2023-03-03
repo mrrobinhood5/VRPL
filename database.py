@@ -1,7 +1,11 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from redis_interface import RedisClient
+from os import getenv
 
-client = AsyncIOMotorClient("mongodb+srv://vrcl_user:DiMvMPCVGF7zXdB@cluster0.i31qn.mongodb.net/?retryWrites=true&w=majority")
+db_user = getenv('DB_USER')
+db_pw = getenv('DB_PW')
+
+client = AsyncIOMotorClient(f"mongodb+srv://{db_user}:{db_pw}@cluster0.i31qn.mongodb.net/?retryWrites=true&w=majority")
 db: AsyncIOMotorDatabase = client['VRCL']
 
 config_db = RedisClient(db=0)
