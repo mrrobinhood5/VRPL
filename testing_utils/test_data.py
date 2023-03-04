@@ -4,14 +4,19 @@ seasons = [
     {
         'name': 'Season 1',
         'description': 'Season one will be the best season ever, marks the start of VRCL',
-        'start_date': '1/1/2023',
-        'end_date': '6/1/2023'
+        'start_date': '10/1/2022',
+        'end_date': '1/1/2023'
     },
     {
         'name': 'Season 2',
         'description': 'Season two will be better than the first one!!',
-        'start_date': '7/1/2023',
-        'end_date': '12/1/2023'
+        'start_date': '2/1/2023',
+        'end_date': '7/1/2023'
+    },
+    {
+        'name': 'Season 3',
+        'description': 'Season 3 is the most exciting yet, lots of new players',
+        'start_date': '1/1/2024'
     }]
 
 games = [
@@ -22,10 +27,18 @@ games = [
     {
         'name': 'Breachers',
         'description': 'Breachers is still in beta but its a popular game!'
+    },
+    {
+        'name': 'HyperDash',
+        'description': 'Just like breachers but your dash around and shoot stuff'
+    },
+    {
+        'name': 'Vail',
+        'description': 'Yea i dont know anything about vail. I think its a slow version of C$'
     }
 ]
 
-tournaments = [{
+c_tournaments = [{
         'name': "Comp Control",
         'description': 'Comp Control is a popular mode to play where you have to keep control of an area',
         'rules': f'rules are long, here is the link {generate_link()}',
@@ -38,10 +51,10 @@ tournaments = [{
         'max_match_players_per_team': 1,
     },
     {
-        'name': 'Base Tournament',
-        'description': 'Regular blue vs red game. find the bomb and pew pew pew',
+        'name': 'Bomb Defusal',
+        'description': 'Find the bomb but dont die, if you die, you lose',
         'rules': f'link to rules is {generate_link()}',
-        'max_match_players_per_team': 6
+        'max_match_players_per_team': 5
     },
     {
         'name': 'Iron Man',
@@ -50,11 +63,36 @@ tournaments = [{
         'max_match_players_per_team': 8,
     },
     {
-        'name': 'Iron Man v2',
-        'description': 'This is the second go around for this game, fixing things from the first one',
+        'name': 'Team Death Match',
+        'description': 'Gather up your best team and play in a fast paced, spawn killing fest',
         'rules': f'the rules are soo soo soo long, link here: {generate_link()}',
-        'max_match_players_per_team': 8,
+        'max_match_players_per_team': 5,
+    },
+    {
+        'name': 'Kill Confirmed',
+        'description': 'collect all them tags or camp out in the one room all game, you chooose',
+        'rules': f'rules are here: {generate_link()}',
+        'max_match_players_per_team': 5,
+    },
+    {
+        'name': 'Long Guns',
+        'description': 'Shoot far or noscope everyone. pew pew pew',
+        'rules': f'link to rules here: {generate_link()}',
+        'max_match_players_per_team': 4,
+    },
+    {
+        'name': 'Melee ONly',
+        'description': 'otherwise known as onlypans. ',
+        'rules': f'link again is here: {generate_link()}',
+        'max_match_players_per_team': 5,
+    },
+    {
+        'name': 'Pairs',
+        'description': 'Grab a battle buddy and settle in',
+        'rules': f'rules: {generate_link()}',
+        'max_match_players_per_team': 2
     }
+
 ]
 team_names = iter(["Deadfire Captivity",
                    "Mortal Scream",

@@ -1,42 +1,53 @@
 from __future__ import annotations
 from base_classes import *
 from errors import TournamentError, TeamError
-from testing_utils.test_data import team_names, seasons, games, tournaments
+from testing_utils.test_data import team_names, seasons, games, c_tournaments
 from random import randint
 from testing_utils.utils import *
 
-# define test seasons
+# Generate players
+for x in range(0, 500):
+    Player(game_uid=generate_guid(),
+           name=generate_username() )
 
+# choose 50 players to be captains and make teams
+for x in range(0, 50):
+    try:
+        Team(name=generate_team_name(),
+             description=generate_description(),
+             captain=Player.instances()[x].id,
+             )
+    except TeamError as e:
+        print(f'Error creating team: {e}')
+
+# go through the rest to make teams
+for player in Player.instances():
+    try:
+        player.join_team(Team.instances()[randint(0, len(Team.instances()) - 1)])
+    except TeamError as e:
+        print(f'Team error: {e}')
+
+# have captains choose co-captains
+for team in Team.instances():
+    try:
+        team.make_co_captain(team.captain, team.players[randint(0, len(team.players) - 1)].id)
+    except TeamError as e:
+        print(f"Error Making Co Captain: {e}")
+
+# define test seasons
 for season in seasons:
     Season(**season)
 
 for game in games:
     Game(**game)
 
-for tournament in tournaments:
-    Tournament(**tournament,
-               belongs_to_game=Game.instances()[randint(0, 1)],
-               belongs_to_season=Season.instances()[randint(0, 1)])
-
-# Generate 50 teams
-for x in range(0, 50):
+for tournament in c_tournaments:
     try:
-        Team(name=generate_team_name(),
-             description=doc_gen.gen_sentence(min_words=10, max_words=25),
-             captain=make_member_id(),
-             co_captain=make_member_id(),
-             belongs_to_tournament=Tournament.instances()[randint(0, len(Tournament.instances())-1)])
+        Tournament(**tournament,
+                   belongs_to_game=Game.get('con').id,
+                   belongs_to_season=Season.get('2').id)
     except TournamentError as e:
-        print(f"Error creating team: {e}")
-
-# Generate 100 players
-for x in range(0, 500):
-    try:
-        Player(game_uid=generate_guid(),
-               name=generate_username(),
-               belongs_to_team= [Team.instances()[randint(0, len(Team.instances())-1)], None][randint(0, 1)])
-    except TeamError as e:
-        print(f"Error joining the team")
+        print(f'Error creating tournament: {e}')
 
 # join the 1v1 tournament
 singles_tournament = Tournament.get('1v1')
@@ -44,6 +55,13 @@ for player in Player.instances():
     _ = randint(0, 1)
     if _:
         player.join_tournament(singles_tournament)
+
+# team captains join tournamnents
+for team in Team.instances():
+    try:
+        team.join_tournament(team.captain, Tournament.instances()[randint(0, len(Tournament.instances())-1)])
+    except TournamentError as e:
+        print(f'Tournament error: {e}')
 
 # Statistics
 total_seasons = Season.count()
@@ -55,31 +73,36 @@ active_teams = len([x for x in Team.instances() if x.active])
 total_players = Player.count()
 teamed_players = len([x for x in Player.instances() if x.belongs_to_team])
 
-stats =  f'VRCL test data: \n\n' \
-         f'There are {total_seasons} Seasons configured \n' \
-         f'There are {total_games} Games configured \n' \
-         f'There are {total_tournaments} Tournaments, {active_tournaments} of them are active\n' \
-         f'We have {total_teams} teams registered, of which {active_teams} are active' \
-         f'We have {total_players} players registered, {teamed_players} are in teams' \
-         f'\n\n'
+stats = f'VRCL test data: \n\n' \
+        f'There are {total_seasons} Seasons configured \n' \
+        f'There are {total_games} Games configured \n' \
+        f'There are {total_tournaments} Tournaments, {active_tournaments} of them are active\n' \
+        f'We have {total_teams} teams registered, of which {active_teams} are active\n' \
+        f'We have {total_players} players registered, {teamed_players} are in teams' \
+        f'\n\n'
 for season in Season.instances():
     stats += f'{season.name}: {season.description}\n'
     for tournament in season.tournaments:
-        stats += f'\t{tournament.name} ({tournament.belongs_to_game.name}): {tournament.description}\n'
+        stats += f'\t{tournament.name} ({Game.lookup(tournament.belongs_to_game).name}): {tournament.description}\n'
         if tournament.individual:
             for player in tournament.players:
                 stats += f'\t \t{player.name}\n'
         else:
             for team in tournament.teams:
                 stats += f'\t \t{team.name} : {team.description}\n' \
-                         f'\t \t \t Captain: {team.captain}\n' \
-                         f'\t \t \t Co-Cap: {team.co_captain}\n'
+                         # f'\t \t \t Captain: {Player.lookup(team.captain).name}\n' \
+                         # f'\t \t \t Co-Cap: {Player.lookup(team.co_captain).name}\n'
                 for player in team.players:
-                    stats += f'\t \t \t {player.name}\n'
+                    stats += f'\t \t \t {player.name}'
+                    if player.id is team.captain:
+                        stats += f' (Captain)\n'
+                    elif player.id is team.co_captain:
+                        stats += f' (Co-Captain)\n'
+                    else:
+                        stats += f'\n'
 
 print(stats)
 
-# TODO: Team captains and co captains need to be player objects
-# TODO: Create all player objects before all
-# TODO: add methods for players to join team / tournament
-# TODO: add tournament limits
+
+# TODO: IMPLEMENT TRANSACTION LOG
+# TODO: I COMPLETELY FORGOT ABOUT DIVISIONS
