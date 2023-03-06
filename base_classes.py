@@ -4,7 +4,7 @@ from bson.objectid import ObjectId
 from typing import List, Union, Any
 from errors import TournamentError, TeamError
 from dateutil.relativedelta import relativedelta
-from json import dumps
+# from json import dumps
 
 
 @dataclass
@@ -13,7 +13,7 @@ class Base:
     _instances = []
 
     @classmethod
-    def lookup(cls, obj:ObjectId) -> Any:
+    def lookup(cls, obj: ObjectId) -> Any:
         """
         Returns a matching object with that id
         :param obj: ObjectID to look for
@@ -28,7 +28,7 @@ class Base:
     @classmethod
     def get(cls, search_term):
         """
-        Returns a list of instances matching the searchterm
+        Returns a list of instances matching the search term
         :param search_term: String representation of the search term
         :return:
         """
@@ -91,14 +91,14 @@ class Season(Base):
 
     @property
     def games(self) -> List:
-        """ This should return a list of games that have belong to this season"""
+        """ This should return a list of games that belong to this season"""
         return []
 
     @property
     def tournaments(self) -> List:
         if isinstance(Tournament.instances(), List):
             return [x for x in Tournament.instances() if self.id is x.belongs_to_season]
-        elif Tournament.instances().belongs_to_season== self:
+        elif Tournament.instances().belongs_to_season == self:
             return [Tournament.instances()]
         else:
             return []
@@ -113,8 +113,9 @@ class Season(Base):
         }
         return _r
 
-    def toJSON(self):
-        return dumps(self, default=lambda o: o.to_dict(), sort_keys=True, indent=4)
+    # def toJSON(self):
+    #     return dumps(self, default=lambda o: o.to_dict(), sort_keys=True, indent=4)
+
 
 @dataclass
 class Game(Base):
@@ -133,6 +134,7 @@ class Game(Base):
             return [Tournament.instances()]
         else:
             return []
+
 
 @dataclass
 class Tournament(Base):
@@ -185,11 +187,12 @@ class Tournament(Base):
     def players(self) -> List:
         if self.individual:
             if isinstance(Player.instances(), List):
-                return [x for x in Player.instances() if self in x.belongs_to_tournament ]
+                return [x for x in Player.instances() if self in x.belongs_to_tournament]
             else:
                 return Player.instances() if Player.instances().belongs_to_tournament == self else []
         else:
             return []
+
 
 @dataclass
 class Team(Base):
@@ -219,7 +222,7 @@ class Team(Base):
 
         # check oto see if tournament is active
         if not tournament.active:
-            raise TournamentError('Thats not a valid tournament ID')
+            raise TournamentError('That\'s not a valid tournament ID')
 
         # check the tournament passed if its individual. If so, team cannot be created.
         if tournament.individual:
@@ -236,7 +239,7 @@ class Team(Base):
     @property
     def team_full(self) -> bool:
         if isinstance(Player.instances(), List):
-            _ = len([x for x in Player.instances() if self in x.belongs_to_team ])
+            _ = len([x for x in Player.instances() if self in x.belongs_to_team])
             return True if _ >= 10 else False
         else:
             return False
@@ -275,7 +278,6 @@ class Player(Base):
     belongs_to_tournament: List[Tournament] = field(default_factory=list)
     id: ObjectId = field(default_factory=ObjectId)
     _instances = []
-
 
     # at some point check to see if the same uid or in_game_name is not in use
     @property

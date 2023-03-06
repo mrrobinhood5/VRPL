@@ -1,14 +1,14 @@
 from __future__ import annotations
 from base_classes import *
 from errors import TournamentError, TeamError
-from testing_utils.test_data import team_names, seasons, games, c_tournaments
-from random import randint
+from testing_utils.test_data import seasons, games, c_tournaments
+# from random import randint
 from testing_utils.utils import *
 
 # Generate players
 for x in range(0, 500):
     Player(game_uid=generate_guid(),
-           name=generate_username() )
+           name=generate_username())
 
 # choose 50 players to be captains and make teams
 for x in range(0, 50):
@@ -20,7 +20,7 @@ for x in range(0, 50):
     except TeamError as e:
         print(f'Error creating team: {e}')
 
-# go through the rest to make teams
+# go through the rest of the players to make teams
 for player in Player.instances():
     try:
         player.join_team(Team.instances()[randint(0, len(Team.instances()) - 1)])
@@ -34,7 +34,7 @@ for team in Team.instances():
     except TeamError as e:
         print(f"Error Making Co Captain: {e}")
 
-# define test seasons
+# define test seasons, games and tournaments
 for season in seasons:
     Season(**season)
 
@@ -49,19 +49,20 @@ for tournament in c_tournaments:
     except TournamentError as e:
         print(f'Error creating tournament: {e}')
 
-# join the 1v1 tournament
+# random players join the 1v1 tournament
 singles_tournament = Tournament.get('1v1')
 for player in Player.instances():
     _ = randint(0, 1)
     if _:
         player.join_tournament(singles_tournament)
 
-# team captains join tournamnents
+# team captains join the other team tournaments
 for team in Team.instances():
     try:
         team.join_tournament(team.captain, Tournament.instances()[randint(0, len(Tournament.instances())-1)])
     except TournamentError as e:
         print(f'Tournament error: {e}')
+
 
 # Statistics
 total_seasons = Season.count()
@@ -89,9 +90,7 @@ for season in Season.instances():
                 stats += f'\t \t{player.name}\n'
         else:
             for team in tournament.teams:
-                stats += f'\t \t{team.name} : {team.description}\n' \
-                         # f'\t \t \t Captain: {Player.lookup(team.captain).name}\n' \
-                         # f'\t \t \t Co-Cap: {Player.lookup(team.co_captain).name}\n'
+                stats += f'\t \t{team.name} : {team.description}\n'
                 for player in team.players:
                     stats += f'\t \t \t {player.name}'
                     if player.id is team.captain:
