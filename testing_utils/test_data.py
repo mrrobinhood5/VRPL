@@ -94,6 +94,19 @@ c_tournaments = [{
     }
 
 ]
+
+divisions = [
+    {
+        'name': 'Division 1',
+        'description': 'Invite only, can be demoted to Division one on poor performance'
+    },
+    {
+        'name': 'Division 2',
+        'description': 'Secondary division. Can be promoted to Division 1 on good performance'
+    }
+]
+
+
 team_names = iter(["Deadfire Captivity",
                    "Mortal Scream",
                    "Chromatic Death",

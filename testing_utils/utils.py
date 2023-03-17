@@ -2,9 +2,26 @@ from random import randint
 from essential_generators import DocumentGenerator, StatisticTextGenerator
 # from testing_utils.test_data import team_names
 from wonderwords import RandomWord
+from base_classes import Player
+from errors import PlayerError
 
 doc_gen = DocumentGenerator(text_generator=StatisticTextGenerator())
 team_gen = RandomWord()
+
+
+def generate_players(amount: int) -> bool:
+    """
+    generates Player objects for testing
+    :param amount: how many player objects to create
+    :return: True if successful
+    """
+    for x in range(0, amount):
+        try:
+            Player(game_uid=generate_guid(),
+                   name=generate_username())
+        except PlayerError as e:
+            print(f'PlayerError: {e}')
+    return True
 
 
 def make_member_id() -> str:

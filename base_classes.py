@@ -2,15 +2,29 @@ from datetime import datetime
 from dataclasses import dataclass, field
 from bson.objectid import ObjectId
 from typing import List, Union, Any
-from errors import TournamentError, TeamError
+from errors import TournamentError, TeamError, PlayerError
 from dateutil.relativedelta import relativedelta
-# from json import dumps
+from transactions.transaction_log import TransactionLogger, TransactionType
+
+
+
+class Offence:
+    pass
+
+class Warning:
+    pass
+
+
+@dataclass
+class Map:
+    name: str
 
 
 @dataclass
 class Base:
     name: str
     _instances = []
+    logger: TransactionLogger
 
     @classmethod
     def lookup(cls, obj: ObjectId) -> Any:
@@ -19,7 +33,7 @@ class Base:
         :param obj: ObjectID to look for
         :return: The matching object
         """
-        _ = [x for x in cls.instances() if x.id is obj]
+        _ = [x for x in cls.instances() if x.id == obj]
         if not _:
             return None
         else:
@@ -52,6 +66,10 @@ class Base:
     @classmethod
     def count(cls) -> int:
         return len(cls._instances)
+
+    @property
+    def to_dict(self):
+        pass
 
 
 @dataclass
@@ -97,12 +115,13 @@ class Season(Base):
     @property
     def tournaments(self) -> List:
         if isinstance(Tournament.instances(), List):
-            return [x for x in Tournament.instances() if self.id is x.belongs_to_season]
+            return [x for x in Tournament.instances() if self.id == x.belongs_to_season]
         elif Tournament.instances().belongs_to_season == self:
             return [Tournament.instances()]
         else:
             return []
 
+    @property
     def to_dict(self) -> dict:
         _r = {
             'id': str(self.id),
@@ -120,7 +139,7 @@ class Season(Base):
 @dataclass
 class Game(Base):
     description: str
-    id: ObjectId = ObjectId()
+    id: ObjectId = field(default_factory=ObjectId)
     _instances = []
 
     def __post_init__(self):
@@ -129,12 +148,21 @@ class Game(Base):
     @property
     def tournaments(self) -> List:
         if isinstance(Tournament.instances(), List):
-            return [x for x in Tournament.instances() if self.id is x.belongs_to_game]
+            return [x for x in Tournament.instances() if self.id == x.belongs_to_game]
         elif Tournament.instances().belongs_to_game == self:
             return [Tournament.instances()]
         else:
             return []
 
+    @property
+    def to_dict(self):
+        _r = {
+            'id': str(self.id),
+            'name': self.name,
+            'description': self.description,
+            'tournaments': [str(x.id) for x in self.tournaments ]
+        }
+        return _r
 
 @dataclass
 class Tournament(Base):
@@ -149,7 +177,7 @@ class Tournament(Base):
     start_date: Union[datetime, str] = datetime.today()
     end_date: Union[datetime, str] = datetime.today() + relativedelta(months=3)
     # participants: List[Member] = field(default_factory=list) this is probably a property
-    id: ObjectId = ObjectId()
+    id: ObjectId = field(default_factory=ObjectId)
     _instances = []
     _teams = []
 
@@ -193,14 +221,61 @@ class Tournament(Base):
         else:
             return []
 
+    @property
+    def to_dict(self):
+        _r = {
+            'id': str(self.id),
+            'start_date': str(self.start_date),
+            'end_date': str(self.end_date),
+            'description': self.description,
+            'name': self.name,
+            'rules': self.rules,
+            'max_match_players_per_team': self.max_match_players_per_team,
+            'belongs_to_game': str(self.belongs_to_game),
+            'belongs_to_season': str(self.belongs_to_season),
+            'swaps_allowed': self.swaps_allowed,
+            'individual': self.individual,
+            'active': self.active,
+            'teams': [str(x.id) for x in self.teams],
+            'players': [str(x.id) for x in self.players]
+
+        }
+        return _r
+
+
+
+@dataclass
+class Division(Base):
+    description: str
+    belongs_to_tournament: Tournament
+    id: ObjectId = field(default_factory=ObjectId)
+
+    def __post_init__(self):
+        self.__class__._instances.append(self)
+
+    @property
+    def teams(self):
+        return [x for x in Team.instances() if x.belongs_to_division is self]
+
+    @property
+    def to_dict(self):
+        _r = {
+            'name': self.name,
+            'description': self.description,
+            'belongs_to_tournament': str(self.belongs_to_tournament.id),
+            'id': str(self.id),
+            'teams': [str(x.id) for x in self.teams]
+        }
+        return _r
 
 @dataclass
 class Team(Base):
     description: str
     captain: ObjectId
+    belongs_to_division: Division
     co_captain: Union[ObjectId, None] = None
     belongs_to_tournament: Union[Tournament, List[Tournament]] = field(default_factory=list)
-    id: ObjectId = ObjectId()
+    id: ObjectId = field(default_factory=ObjectId)
     active: bool = True
     _instances = []
 
@@ -269,6 +344,31 @@ class Team(Base):
         self.co_captain = co_captain
         return True
 
+    def kick_player(self, requestor: ObjectId, kicked_player: ObjectId) -> bool:
+        # implement kick player by a team_captain or co-captain
+        pass
+
+    @property
+    def matches(self):
+        # implement a count of how many matches the team has played
+        return True
+
+    @property
+    def to_dict(self):
+        _r = {
+            'id': str(self.id),
+            'name': self.name,
+            'description': self.description,
+            'captain': str(self.captain),
+            'belongs_to_division': str(self.belongs_to_division.id),
+            'co_captain': None or str(self.co_captain),
+            'belongs_to_tournament': [str(x.id) for x in self.belongs_to_tournament],
+            'active': self.active,
+            'team_full': self.team_full,
+            'player_count': self.player_count,
+            'players': [str(x.id) for x in self.players]
+        }
+        return _r
 
 @dataclass
 class Player(Base):
@@ -277,14 +377,48 @@ class Player(Base):
     belongs_to_team: List[Team] = field(default_factory=list)
     belongs_to_tournament: List[Tournament] = field(default_factory=list)
     id: ObjectId = field(default_factory=ObjectId)
+    is_banned = False
+    is_suspended = False
+    offences: List[Offence] = field(default_factory=list)
+    warnings: List[Warning] = field(default_factory=list)
     _instances = []
+    # at some point it needs to hold the Discord Member ID
 
-    # at some point check to see if the same uid or in_game_name is not in use
+    @property
+    def to_dict(self) -> dict:
+        """
+        Used to return a dict representation to clean up for the DB
+        :return:
+        """
+        _r = {
+            'id': str(self.id),
+            'name': self.name,
+            'game_uid': self.game_uid,
+            'height': self.height,
+            'belongs_to_team': [str(x.id) for x in self.belongs_to_team] if self.belongs_to_team else [],
+            'belongs_to_tournament': [str(x.id) for x in self.belongs_to_tournament] if self.belongs_to_tournament else [],
+            'is_banned': self.is_banned,
+            'is_suspended': self.is_suspended,
+            'offences': self.offences,
+            'warnings': self.warnings
+        }
+        return _r
+
     @property
     def in_game_name(self):
         return self.name
 
     def __post_init__(self):
+        # at some point check to see if the same uid or in_game_name is not in use
+        if self.game_uid:
+            if Player.instances() is List:
+                if self.game_uid in [_.game_uid for _ in Player.instances()]:
+                    raise PlayerError('UID is already in use.')
+
+        # log the player registration
+        self.logger.log(TransactionType.PLAYER_REGISTER, requestor=self, obj=self)
+
+        # add it player to Player instances
         self.__class__._instances.append(self)
 
     def join_tournament(self, tournament: Tournament):
@@ -295,6 +429,9 @@ class Player(Base):
                 self.belongs_to_tournament.append(tournament)
         else:
             raise TournamentError('Cannot join tournament without a team')
+
+        # log the tournament join
+        self.logger.log(TransactionType.TOURNAMENT_JOIN, requestor=self, obj=tournament)
 
     def join_team(self, team: Team) -> bool:
         """
@@ -309,3 +446,30 @@ class Player(Base):
         else:
             self.belongs_to_team.append(team)
             return True
+
+@dataclass
+class Match:
+    home: Union[Team, Player]
+    away: Union[Team, Player]
+    belongs_to_tournament: Tournament
+    match_date: datetime
+    map: Map
+    home_score: int = 0
+    away_score: int = 0
+    id: ObjectId = field(default_factory=ObjectId)
+
+    @property
+    def winner(self) -> Union[Team, None]:
+        if self.home_score > self.away_score:
+            return self.home
+        elif self.away_score > self.home_score:
+            return self.away
+        else:
+            return None
+
+    @property
+    def tie(self) -> bool:
+        if self.away_score == self.home_score:
+            return True
+        else:
+            return False
