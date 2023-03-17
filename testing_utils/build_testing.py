@@ -33,8 +33,8 @@ for tournament in track(c_tournaments,
                         description='Making Tournaments'):
     try:
         Tournament(**tournament,
-                   belongs_to_game=Game.get('con').id,
-                   belongs_to_season=Season.get('2').id,
+                   belongs_to_game=Game.get('con')[0].id,
+                   belongs_to_season=Season.get('2')[0].id,
                    logger=logger)
     except TournamentError as e:
         pass
@@ -44,7 +44,7 @@ for division in track(divisions,
                       description='Making Divisions'):
     try:
         Division(**division,
-                 belongs_to_tournament=Tournament.get('comp'),
+                 belongs_to_tournament=Tournament.get('comp')[0],
                  logger=logger)
     except DivisionError as e:
         pass
@@ -92,7 +92,7 @@ for team in track(Team.instances(),
 
 
 # random players join the 1v1 tournament
-singles_tournament = Tournament.get('1v1')
+singles_tournament = Tournament.get('1v1')[0]
 for player in track(Player.instances(),
                     description='Players Joining 1v1 Tournament'):
     _ = randint(0, 1)

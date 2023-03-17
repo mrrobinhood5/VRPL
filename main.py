@@ -23,7 +23,7 @@ def season_lookup(season_id: str):
 
 @app.get('/season/search/{search}')
 def season_search(search: str):
-    return Season.get(search).to_dict
+    return [season.to_dict for season in Season.get(search)]
 
 
 @app.get('/season/{season_id}/tournaments')
@@ -36,7 +36,7 @@ def games():
 
 @app.get('/games/search/{search}')
 def game_search(search: str):
-    return Game.get(search).to_dict
+    return [game.to_dict for game in Game.get(search)]
 
 @app.get('/game/{game_id}')
 def games(game_id: str):
@@ -46,9 +46,9 @@ def games(game_id: str):
 def tournaments():
     return [tournament.to_dict for tournament in Tournament.instances()]
 
-@app.get('tournament/search/{search}')
+@app.get('/tournament/search/{search}')
 def tournament_search(search: str):
-    return Tournament.get(search).to_dict
+    return [tournament.to_dict for tournament in Tournament.get(search)]
 
 @app.get('/tournament/{tournament_id}')
 def tournament(tournament_id: str):
@@ -70,9 +70,9 @@ def division(division_id: str):
 def teams():
     return [team.to_dict for team in Team.instances()]
 
-@app.get('team/search/{search}')
+@app.get('/team/search/{search}')
 def team_search(search: str):
-    return Team.get(search).to_dict
+    return [team.to_dict for team in Team.get(search)]
 
 @app.get('/team/{team_id}')
 def team(team_id: str):
@@ -86,9 +86,9 @@ def team_players(team_id: str):
 def players():
     return [player.to_dict for player in Player.instances()]
 
-@app.get('player/search/{search}')
+@app.get('/player/search/{search}')
 def player(search: str):
-    return Player.get(search).to_dict
+    return [player.to_dict for player in Player.get(search)]
 
 @app.get('/player/{player_id}')
 def player(player_id: str):

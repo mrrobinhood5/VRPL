@@ -40,17 +40,15 @@ class Base:
             return _[0]
 
     @classmethod
-    def get(cls, search_term):
+    def get(cls, search_term) -> List[Any]:
         """
         Returns a list of instances matching the search term
         :param search_term: String representation of the search term
         :return:
         """
         _search = [s for s in cls.instances() if search_term.lower() in s.name.lower()]
-        if len(_search) == 1:
-            return _search[0]
-        else:
-            return _search
+
+        return _search
 
     @classmethod
     def instances(cls):
