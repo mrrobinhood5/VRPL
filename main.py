@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from testing_utils import build_testing
 from testing_utils.build_testing import vrcl, Season, Game, Tournament,Division, Team, Player
 from bson.objectid import ObjectId
+import uvicorn
 
 app = FastAPI()
 
@@ -47,7 +48,7 @@ def tournaments():
 
 @app.get('tournament/search/{search}')
 def tournament_search(search: str):
-    return Tournament.get(season_search).to_dict
+    return Tournament.get(search).to_dict
 
 @app.get('/tournament/{tournament_id}')
 def tournament(tournament_id: str):
@@ -71,7 +72,7 @@ def teams():
 
 @app.get('team/search/{search}')
 def team_search(search: str):
-    return Team.get(season_search).to_dict
+    return Team.get(search).to_dict
 
 @app.get('/team/{team_id}')
 def team(team_id: str):
@@ -87,10 +88,13 @@ def players():
 
 @app.get('player/search/{search}')
 def player(search: str):
-    return Player.get(season_search).to_dict
+    return Player.get(search).to_dict
 
 @app.get('/player/{player_id}')
 def player(player_id: str):
     return Player.lookup(ObjectId(player_id)).to_dict
 
 # TODO make the PUT routes
+
+if __name__ == "__main__":
+    uvicorn.run(app, host='0.0.0.0', port=8080)
