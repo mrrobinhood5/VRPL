@@ -11,6 +11,7 @@ from rich.table import Table
 from rich.tree import Tree
 from rich.text import Text
 
+
 main_console = Console()
 secondary_console = Console()
 logger = TransactionLogger()
@@ -21,6 +22,7 @@ captains = 50
 main_console.rule(title='Generators', characters='-')
 
 # define test seasons, games and tournaments
+# all seasons creations will be loggged
 for season in seasons:
     Season(**season,
            logger=logger)
@@ -66,7 +68,7 @@ for x in track(range(0, 50),
              description=generate_description(),
              captain=Player.instances()[x].id,
              logger=logger,
-             belongs_to_division=Division.instances()[randint(0,1)]
+             belongs_to_division=Division.instances()[randint(0, 1)]
              )
     except TeamError as e:
         pass

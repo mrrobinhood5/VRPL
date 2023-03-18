@@ -7,11 +7,11 @@ from dateutil.relativedelta import relativedelta
 from transactions.transaction_log import TransactionLogger, TransactionType
 
 
-
 class Offence:
     pass
 
-class Warning:
+
+class LeagueWarning:
     pass
 
 
@@ -67,7 +67,7 @@ class Base:
 
     @property
     def to_dict(self):
-        pass
+        return None
 
 
 @dataclass
@@ -92,6 +92,8 @@ class Season(Base):
             self.end_date = datetime.strptime(self.end_date, "%m/%d/%Y")
         elif not isinstance(self.end_date, datetime):
             raise ValueError('That\'s is not a valid date format')
+
+        self.logger.log(TransactionType.SEASON_CREATE, requestor=None, obj=self)
 
         self.__class__._instances.append(self)
 
@@ -141,6 +143,8 @@ class Game(Base):
     _instances = []
 
     def __post_init__(self):
+        self.logger.log(TransactionType.GAME_CREATE, requestor=None, obj=self)
+
         self.__class__._instances.append(self)
 
     @property
@@ -158,9 +162,10 @@ class Game(Base):
             'id': str(self.id),
             'name': self.name,
             'description': self.description,
-            'tournaments': [str(x.id) for x in self.tournaments ]
+            'tournaments': [str(x.id) for x in self.tournaments]
         }
         return _r
+
 
 @dataclass
 class Tournament(Base):
@@ -202,6 +207,8 @@ class Tournament(Base):
             if self.name in [x.name for x in Tournament.instances()]:
                 raise TournamentError('Tournament name is already in use')
 
+        self.logger.log(TransactionType.TOURNAMENT_CREATE, requestor=None, obj=self)
+
         self.__class__._instances.append(self)
 
     @property
@@ -241,7 +248,6 @@ class Tournament(Base):
         return _r
 
 
-
 @dataclass
 class Division(Base):
     description: str
@@ -249,11 +255,13 @@ class Division(Base):
     id: ObjectId = field(default_factory=ObjectId)
 
     def __post_init__(self):
+        self.logger.log(TransactionType.DIVISION_CREATE, requestor=None, obj=self)
+
         self.__class__._instances.append(self)
 
     @property
     def teams(self):
-        return [x for x in Team.instances() if x.belongs_to_division is self]
+        return [x for x in Team.instances() if x.belongs_to_division == self]
 
     @property
     def to_dict(self):
@@ -265,6 +273,7 @@ class Division(Base):
             'teams': [str(x.id) for x in self.teams]
         }
         return _r
+
 
 @dataclass
 class Team(Base):
@@ -282,6 +291,8 @@ class Team(Base):
         if isinstance(Team.instances(), List):
             if self.name in [x.name for x in Team.instances()]:
                 raise TeamError('Team name is already in use')
+
+        self.logger.log(TransactionType.TEAM_CREATE, requestor=Player.lookup(self.captain), obj=self)
 
         # Add captain to the team
         Player.lookup(self.captain).join_team(self)
@@ -340,6 +351,8 @@ class Team(Base):
             raise TeamError("That Player is not on this team")
 
         self.co_captain = co_captain
+        # TODO: I LEFT OFF HERE
+        self.logger.log(TransactionType.PLAYER_PROMOTE, requestor=requestor, obj=self)
         return True
 
     def kick_player(self, requestor: ObjectId, kicked_player: ObjectId) -> bool:
@@ -368,6 +381,7 @@ class Team(Base):
         }
         return _r
 
+
 @dataclass
 class Player(Base):
     game_uid: Union[str, None] = None
@@ -380,6 +394,7 @@ class Player(Base):
     offences: List[Offence] = field(default_factory=list)
     warnings: List[Warning] = field(default_factory=list)
     _instances = []
+
     # at some point it needs to hold the Discord Member ID
 
     @property
@@ -394,7 +409,8 @@ class Player(Base):
             'game_uid': self.game_uid,
             'height': self.height,
             'belongs_to_team': [str(x.id) for x in self.belongs_to_team] if self.belongs_to_team else [],
-            'belongs_to_tournament': [str(x.id) for x in self.belongs_to_tournament] if self.belongs_to_tournament else [],
+            'belongs_to_tournament': [str(x.id) for x in
+                                      self.belongs_to_tournament] if self.belongs_to_tournament else [],
             'is_banned': self.is_banned,
             'is_suspended': self.is_suspended,
             'offences': self.offences,
@@ -442,8 +458,12 @@ class Player(Base):
         elif team in self.belongs_to_team:
             raise TeamError('You are already part of this team. Doh!')
         else:
+            # log the tournament join
+            self.logger.log(TransactionType.TEAM_JOIN, requestor=self, obj=team)
+
             self.belongs_to_team.append(team)
             return True
+
 
 @dataclass
 class Match:
@@ -471,3 +491,8 @@ class Match:
             return True
         else:
             return False
+
+    @property
+    def completed(self) -> bool:
+        pass
+
