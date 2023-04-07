@@ -2,6 +2,7 @@ from __future__ import annotations
 from base_classes import *
 from errors import TournamentError, TeamError, DivisionError
 from testing_utils.test_data import seasons, games, c_tournaments, divisions
+from tournament_classes import Match, MatchError, MatchScore
 # from random import randint
 from database import db
 from testing_utils.utils import *
@@ -87,11 +88,10 @@ for player in track(Player.instances(),
 for team in track(Team.instances(),
                   description='Choosing Co-Captains'):
     try:
+
         team.make_co_captain(team.captain, team.players[randint(0, len(team.players) - 1)].id)
     except TeamError as e:
-        pass
-        # print(f"Error Making Co Captain: {e}")
-
+        print(f"Error Making Co Captain: {e}")
 
 # random players join the 1v1 tournament
 singles_tournament = Tournament.get('1v1')[0]

@@ -10,4 +10,10 @@ class PlayerError(Exception):
 
 class DivisionError(Exception):
     pass
+
+class MatchError(Exception):
+    pass
+
+class BaseError(Exception):
+    pass
 # TODO error calls need to be logged with the logger

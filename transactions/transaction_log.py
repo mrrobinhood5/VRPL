@@ -1,14 +1,10 @@
 from dataclasses import dataclass, field
-from typing import Any, Union, List
+from typing import Any, Optional
 from bson.objectid import ObjectId
-from enum import Enum, auto
-from discord import Member
+from enum import Enum
+# from discord import Member
 from datetime import datetime
 from queue import Queue
-
-import database
-from db_interface import DbInterface
-from motor.motor_asyncio import AsyncIOMotorCollection, AsyncIOMotorDatabase
 
 
 class TransactionType(Enum):
@@ -16,6 +12,7 @@ class TransactionType(Enum):
     PLAYER_REGISTER = "REGISTERED PLAYER"
     PLAYER_CHANGE = "PLAYER UPDATE"
     TEAM_JOIN = "JOINED TEAM"
+    PLAYER_PROMOTE = "PLAYER PROMOTION"
 
     # Team Transactions
     TEAM_CREATE = "TEAM CREATED"
@@ -35,11 +32,12 @@ class TransactionType(Enum):
     # Division Transactions
     DIVISION_CREATE = "DIVISION CREATED"
 
+
 @dataclass
 class TransactionLogger:
     queue: Queue = field(default_factory=Queue)
 
-    def log(self, t_type: TransactionType, requestor: Any, obj: Any):
+    def log(self, t_type: TransactionType, requestor: Any, obj: Any, additional: Optional[Any] = None):
         _id = ObjectId()
         transaction = {
             '_id': _id,
@@ -64,6 +62,8 @@ class TransactionLogger:
             self.team_create(transaction, obj)
         elif t_type is TransactionType.TEAM_JOIN:
             self.team_join(transaction, obj)
+        elif t_type is TransactionType.PLAYER_PROMOTE:
+            self.player_promote(transaction, obj, additional)
 
     def season_create(self, transaction: dict, obj: Any):
         transaction.update({'season': obj.to_dict})
@@ -95,6 +95,13 @@ class TransactionLogger:
         print(f'[{transaction["type"]}] [{datetime.now()}] '
               f'Discord Member Name registered a new player with the name of {obj.name}')
 
+    def player_promote(self, transaction: dict, obj: Any, target: Any):
+        transaction.update({'team': obj.to_dict})
+        transaction.update({'promoted': target.to_dict})
+        self.queue.put(transaction)
+        print(f'[{transaction["type"]}] [{datetime.now()}] '
+              f'{transaction["requestor_name"]} has promoted {target.name} in team {obj.name}')
+
     def team_create(self, transaction: dict, obj: Any):
         transaction.update({'team': obj.to_dict})
         self.queue.put(transaction)
@@ -111,9 +118,8 @@ class TransactionLogger:
         transaction.update({'tournament': obj.name})
         self.queue.put(transaction)
         print(f'[{transaction["type"]}] [{datetime.now()}] '
-              f'Discord Member Name joined the {obj.name} Tournament')
+              f'{transaction["requestor_name"]} joined the {obj.name} Tournament')
     #
     # def player_update(self, transaction: dict, obj: Any):
     #     # cls.queue.append(transaction)
     #     pass
-

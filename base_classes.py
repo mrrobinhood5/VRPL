@@ -2,9 +2,10 @@ from datetime import datetime
 from dataclasses import dataclass, field
 from bson.objectid import ObjectId
 from typing import List, Union, Any
-from errors import TournamentError, TeamError, PlayerError
+from errors import TournamentError, TeamError, PlayerError, BaseError
 from dateutil.relativedelta import relativedelta
 from transactions.transaction_log import TransactionLogger, TransactionType
+from enum import Enum
 
 
 class Offence:
@@ -22,9 +23,9 @@ class Map:
 
 @dataclass
 class Base:
-    name: str
     _instances = []
     logger: TransactionLogger
+    name: str
 
     @classmethod
     def lookup(cls, obj: ObjectId) -> Any:
@@ -35,7 +36,7 @@ class Base:
         """
         _ = [x for x in cls.instances() if x.id == obj]
         if not _:
-            return None
+            raise BaseError('None Found')
         else:
             return _[0]
 
@@ -51,15 +52,12 @@ class Base:
         return _search
 
     @classmethod
-    def instances(cls):
+    def instances(cls) -> List[Union['Player', 'Tournament', 'Team']]:
         """
         Returns a list ...
         :return: A list of all instances in this class
         """
-        if len(cls._instances) == 1:
-            return cls._instances[0]
-        else:
-            return cls._instances
+        return cls._instances
 
     @classmethod
     def count(cls) -> int:
@@ -151,8 +149,6 @@ class Game(Base):
     def tournaments(self) -> List:
         if isinstance(Tournament.instances(), List):
             return [x for x in Tournament.instances() if self.id == x.belongs_to_game]
-        elif Tournament.instances().belongs_to_game == self:
-            return [Tournament.instances()]
         else:
             return []
 
@@ -183,6 +179,12 @@ class Tournament(Base):
     id: ObjectId = field(default_factory=ObjectId)
     _instances = []
     _teams = []
+    # match_frequency = 7 days
+    # maps_per_match = 2
+    # map_frequency = 2
+    # roster_lock_after = 14 weeks
+    # participant_type = individual / team
+    #
 
     def __post_init__(self):
         # we need to parse the start/end date if it's a str
@@ -316,6 +318,10 @@ class Team(Base):
         if self in tournament.teams:
             raise TournamentError('You are already in this tournament')
 
+        self.logger.log(TransactionType.TOURNAMENT_JOIN,
+                        requestor=self,
+                        obj=tournament)
+
         self.belongs_to_tournament.append(tournament)
 
         return True
@@ -350,9 +356,16 @@ class Team(Base):
         if co_captain not in [x.id for x in self.players]:
             raise TeamError("That Player is not on this team")
 
+        # check to see if captain is not co-captain
+        if co_captain is self.captain:
+            raise TeamError("Captain cannot be Co-Captain")
+
         self.co_captain = co_captain
-        # TODO: I LEFT OFF HERE
-        self.logger.log(TransactionType.PLAYER_PROMOTE, requestor=requestor, obj=self)
+
+        self.logger.log(TransactionType.PLAYER_PROMOTE,
+                        requestor=Player.lookup(requestor),
+                        obj=self,
+                        additional=Player.lookup(co_captain))
         return True
 
     def kick_player(self, requestor: ObjectId, kicked_player: ObjectId) -> bool:
@@ -464,35 +477,7 @@ class Player(Base):
             self.belongs_to_team.append(team)
             return True
 
-
-@dataclass
-class Match:
-    home: Union[Team, Player]
-    away: Union[Team, Player]
-    belongs_to_tournament: Tournament
-    match_date: datetime
-    map: Map
-    home_score: int = 0
-    away_score: int = 0
-    id: ObjectId = field(default_factory=ObjectId)
-
-    @property
-    def winner(self) -> Union[Team, None]:
-        if self.home_score > self.away_score:
-            return self.home
-        elif self.away_score > self.home_score:
-            return self.away
-        else:
-            return None
-
-    @property
-    def tie(self) -> bool:
-        if self.away_score == self.home_score:
-            return True
-        else:
-            return False
-
-    @property
-    def completed(self) -> bool:
-        pass
-
+# TODO I think Game should be the top level. Games have Tournaments. We dont need seasons? Just tournaments,
+#  Then rounds or weeks, then matches
+# TODO whats the difference between Open and Closed season
+# TODO Tournaments create Weeks/Rounds

@@ -11,7 +11,7 @@ seasons = [
         'name': 'Season 2',
         'description': 'Season two will be better than the first one!!',
         'start_date': '2/1/2023',
-        'end_date': '7/1/2023'
+        'end_date': '9/1/2023'
     },
     {
         'name': 'Season 3',
