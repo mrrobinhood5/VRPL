@@ -1,15 +1,14 @@
 import random
 
-from base_classes import Player, Tournament, Game, Season
-from errors import TournamentError
+from classes.base_classes import Player, Tournament, Game, Season
+from classes.errors import TournamentError
 from testing_utils.test_data import c_tournaments, seasons, games
-from utils import generate_guid, generate_username
-from transactions.transaction_log import TransactionType, TransactionLogger
+from transactions.transaction_log import TransactionLogger
 from database import db
-from db_interface import DbInterface
 from time import sleep
 from utils import generate_players
-from rich import inspect
+
+
 # Transaction log testing uses DB, so it needs to be in an event loop
 
 

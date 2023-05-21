@@ -2,8 +2,8 @@ from random import randint
 from essential_generators import DocumentGenerator, StatisticTextGenerator
 # from testing_utils.test_data import team_names
 from wonderwords import RandomWord
-from base_classes import Player
-from errors import PlayerError
+from classes.base_classes import Player
+from classes.errors import PlayerError
 
 doc_gen = DocumentGenerator(text_generator=StatisticTextGenerator())
 team_gen = RandomWord()

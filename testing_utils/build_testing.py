@@ -1,17 +1,11 @@
 from __future__ import annotations
-from base_classes import *
-from errors import TournamentError, TeamError, DivisionError
+from classes.base import *
+from classes.errors import TournamentError, TeamError, DivisionError
 from testing_utils.test_data import seasons, games, c_tournaments, divisions
-from tournament_classes import Match, MatchError, MatchScore
 # from random import randint
-from database import db
 from testing_utils.utils import *
 from rich.progress import track
 from rich.console import Console
-from rich.table import Table
-from rich.tree import Tree
-from rich.text import Text
-
 
 main_console = Console()
 secondary_console = Console()

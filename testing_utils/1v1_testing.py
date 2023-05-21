@@ -1,4 +1,4 @@
-from base_classes import *
+from classes.base_classes import *
 from testing_utils import test_data
 from testing_utils.utils import *
 
