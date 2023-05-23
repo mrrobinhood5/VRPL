@@ -38,6 +38,10 @@ class Base(BaseModel):
             }
         }
 
+    def __post_init__(self):
+        # at some point check to see if the same uid or in_game_name is not in use
+        Base._instances.append(self)
+
     @classmethod
     def lookup(cls, obj: PyObjectId) -> Any:
         """

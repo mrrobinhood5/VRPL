@@ -35,5 +35,6 @@ async def db_find_one(obj_id: str, db_name: str):
 
 
 async def db_update_one(obj_id: str, db_name: str, obj: dict):
+    obj = jsonable_encoder(obj)
     result = await db[db_name].update_one({"_id": obj_id}, {"$set": obj})
     return result
