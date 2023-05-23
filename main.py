@@ -5,7 +5,7 @@ from classes.players import PlayerModel, UpdatePlayerModel, PlayerTeamModel, Upd
 from classes.teams import TeamModel, UpdateTeamModel
 from typing import List
 
-from database import db_add_one, db_find_all, db_find_one, db_update_one, db_find_some, db
+from database import db_delete_one, db_add_one, db_find_all, db_find_one, db_update_one, db_find_some, db
 import uvicorn
 
 app = FastAPI()
@@ -152,7 +152,7 @@ async def register_player(player: PlayerModel = Body(...)):
     "game_uid": "uid from c$",
     "height": "5ft 6in"``` """
     # TODO: Check to see if the discord_id already exists
-    created_player = await db_add_one(player, "players")
+    created_player = await db_add_one('players', player)
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=created_player)
 
 
@@ -167,7 +167,7 @@ async def list_players(n: int = 100):
 async def show_player(id: str):
     """ To retrieve a single player, send in just the ObjectID for the player """
     # TODO: maybe also take in a discord_id
-    if player := await db_find_one(id, "players") is not None:
+    if player := await db_find_one("players", id) is not None:
         return player
     raise HTTPException(status_code=404, detail=f"Player {id} not found")
 
@@ -184,13 +184,13 @@ async def update_player(id: str, player: UpdatePlayerModel = Body(...)):
     """
     player = {k: v for k, v in player.dict().items() if v is not None}
     if len(player) >= 1:
-        update_result = await db_update_one(id, 'players', player)
+        update_result = await db_update_one('players', id, player)
         if update_result.modified_count == 1:
             if (
-                    updated_player := await db_find_one(id, 'players')
+                    updated_player := await db_find_one('players', id)
             ) is not None:
                 return updated_player
-    if existing_player := await db_find_one(id, 'players') is not None:
+    if existing_player := await db_find_one('players', id) is not None:
         return existing_player
     raise HTTPException(status_code=404, detail=f"Player {id} not found")
 
@@ -202,7 +202,7 @@ async def register_team(team: TeamModel = Body(...)):
     "captain": "The captains Player ObjectID",
     "team_motto": "A brief Motto"```
     """
-    created_team = await db_add_one(team, 'teams')
+    created_team = await db_add_one('teams', team)
     await request_to_join_team(PlayerTeamModel(
         team=created_team['_id'],
         player=created_team['captain'],
@@ -220,7 +220,7 @@ async def list_teams(n: int = 100):
 @app.get("/team/{id}", response_description="Get a single Team", response_model=TeamModel)
 async def show_team(id: str):
     """ To retrieve a specific team, provide the Team ObjectID """
-    if team := await db_find_one(id, 'teams') is not None:
+    if team := await db_find_one('teams', id) is not None:
         return team
     raise HTTPException(status_code=404, detail=f"Team {id} not found")
 
@@ -238,11 +238,11 @@ async def update_team(id: str, team: UpdateTeamModel = Body(...)):
      "active": False or True to mark as active``` """
     team = {k: v for k, v in team.dict().items() if v is not None}
     if len(team) >= 1:
-        update_result = await db_update_one(id, 'teams', team)
+        update_result = await db_update_one('teams', id, team)
         if update_result.modified_count == 1:
-            if (updated_team := await db_find_one(id, 'team')) is not None:
+            if (updated_team := await db_find_one('team', id)) is not None:
                 return updated_team
-    if existing_team := await db_find_one(id, 'teams') is not None:
+    if existing_team := await db_find_one('teams', id) is not None:
         return existing_team
     raise HTTPException(status_code=404, detail=f"Team {id} not found")
 
@@ -257,31 +257,16 @@ async def list_pending_approvals(id: str):
 
 @app.get("/team/{id}/players", response_description="List all Players in a Team", response_model=List[PlayerModel])
 async def list_team_players(id: str):
-    # results = await db_find_some("players", {"team": id, "approved": True})
-    results = await db.player_team_link.aggregate([
-        {
-            '$lookup': {
-                'from': 'players',
-                'localField': 'player',
-                'foreignField': '_id',
-                'as': 'players'
-            }
-        }, {
-            '$project': {
-                'players': True,
-                '_id': False
-            }
-        }
-    ]).to_list(10)
-    print(results)
-    return results[0]['players']  # TODO this is where I left off, still cant aggregate the 3 colections
+    players = await db_find_some('player_team_link', {'team': id, 'approved': True}, {'player': 1, '_id': 0})
+    players = [await db_find_one('players', player['player']) for player in players]
+    return players
 
 
 @app.put("/team/join/", response_description="Request to Join a Team", response_model=PlayerTeamModel)
 async def request_to_join_team(request: PlayerTeamModel = Body(...)):
     """ To request to join a team, a player creates a request
      and a team has to approve it """
-    created_player = await db_add_one(request, "player_team_link")
+    created_player = await db_add_one("player_team_link", request)
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=created_player)
 
 
@@ -290,13 +275,22 @@ async def approve_team_join(id: str, request: UpdatePlayerTeamModel = Body(...))
     """ Approve or Decline a team join """
     request = {k: v for k, v in request.dict().items() if v is not None}
     if len(request) >= 1:
-        update_result = await db_update_one(id, 'player_team_link', request)
+        update_result = await db_update_one('player_team_link', id, request)
         if update_result.modified_count == 1:
-            if (updated_request := await db_find_one(id, 'player_team_link')) is not None:
+            if (updated_request := await db_find_one('player_team_link', id)) is not None:
                 return updated_request
-    if existing_request := await db_find_one(id, 'player_team_link') is not None:
+    if existing_request := await db_find_one('player_team_link', id) is not None:
         return existing_request
     raise HTTPException(status_code=404, detail=f"Team Join request {id} not found")
+    # TODO: Max team is 10
+
+
+@app.delete("/team/remove/{id}", response_description="Remove a Player from Team")
+async def remove_player(id: str):
+    delete_result = await db_delete_one('player_team_link', id)
+    if delete_result.deleted_count == 1:
+        return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=delete_result)
+    raise HTTPException(status_code=404, detail=f'Player {id} not found')
 
 
 @app.get("/db/drop")
