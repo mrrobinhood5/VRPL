@@ -5,7 +5,7 @@ from classes.players import PlayerModel, UpdatePlayerModel, PlayerTeamModel, Upd
 from classes.teams import TeamModel, UpdateTeamModel
 from typing import List
 
-from database import db_add_one, db_find_all, db_find_one, db_update_one, db_find_some
+from database import db_add_one, db_find_all, db_find_one, db_update_one, db_find_some, db
 import uvicorn
 
 app = FastAPI()
@@ -157,9 +157,9 @@ async def register_player(player: PlayerModel = Body(...)):
 
 
 @app.get("/players", response_description="List all registered players", response_model=List[PlayerModel])
-async def list_players():
+async def list_players(n: int = 100):
     """ Lists all registered players from the DB """
-    players = await db_find_all("players", 1000)
+    players = await db_find_all("players", n)
     return players
 
 
@@ -202,15 +202,18 @@ async def register_team(team: TeamModel = Body(...)):
     "captain": "The captains Player ObjectID",
     "team_motto": "A brief Motto"```
     """
-    # TODO: Team Captain needs to be added to the team
     created_team = await db_add_one(team, 'teams')
+    await request_to_join_team(PlayerTeamModel(
+        team=created_team['_id'],
+        player=created_team['captain'],
+        approved=True))
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=created_team)
 
 
 @app.get("/teams", response_description="List all registered teams", response_model=List[TeamModel])
-async def list_teams():
+async def list_teams(n: int = 100):
     """ Lists all registered teams """
-    teams = await db_find_all('teams', 100)
+    teams = await db_find_all('teams', n)
     return teams
 
 
@@ -237,16 +240,15 @@ async def update_team(id: str, team: UpdateTeamModel = Body(...)):
     if len(team) >= 1:
         update_result = await db_update_one(id, 'teams', team)
         if update_result.modified_count == 1:
-            if (
-                    updated_team := await db_find_one(id, 'team')
-            ) is not None:
+            if (updated_team := await db_find_one(id, 'team')) is not None:
                 return updated_team
     if existing_team := await db_find_one(id, 'teams') is not None:
         return existing_team
     raise HTTPException(status_code=404, detail=f"Team {id} not found")
 
 
-@app.get("/team/{id}/approvals", response_description="List all pending Approvals", response_model=List[PlayerTeamModel])
+@app.get("/team/{id}/approvals", response_description="List all pending Approvals",
+         response_model=List[PlayerTeamModel])
 async def list_pending_approvals(id: str):
     # results = await db_find_some("player_team_link", {"team": {"$eq": id}, "approved": {"$ne": True}})
     results = await db_find_some("player_team_link", {"team": id, "approved": None})
@@ -255,8 +257,24 @@ async def list_pending_approvals(id: str):
 
 @app.get("/team/{id}/players", response_description="List all Players in a Team", response_model=List[PlayerModel])
 async def list_team_players(id: str):
-    results = await db_find_some("players", {"team": id, "approved": True})
-    return results #TODO this is where I left off
+    # results = await db_find_some("players", {"team": id, "approved": True})
+    results = await db.player_team_link.aggregate([
+        {
+            '$lookup': {
+                'from': 'players',
+                'localField': 'player',
+                'foreignField': '_id',
+                'as': 'players'
+            }
+        }, {
+            '$project': {
+                'players': True,
+                '_id': False
+            }
+        }
+    ]).to_list(10)
+    print(results)
+    return results[0]['players']  # TODO this is where I left off, still cant aggregate the 3 colections
 
 
 @app.put("/team/join/", response_description="Request to Join a Team", response_model=PlayerTeamModel)
@@ -274,13 +292,18 @@ async def approve_team_join(id: str, request: UpdatePlayerTeamModel = Body(...))
     if len(request) >= 1:
         update_result = await db_update_one(id, 'player_team_link', request)
         if update_result.modified_count == 1:
-            if (
-                    updated_request := await db_find_one(id, 'player_team_link')
-            ) is not None:
+            if (updated_request := await db_find_one(id, 'player_team_link')) is not None:
                 return updated_request
     if existing_request := await db_find_one(id, 'player_team_link') is not None:
         return existing_request
     raise HTTPException(status_code=404, detail=f"Team Join request {id} not found")
+
+
+@app.get("/db/drop")
+async def drop_db():
+    for coll in await db.list_collection_names():
+        await db.drop_collection(coll)
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host='0.0.0.0', port=8080)
