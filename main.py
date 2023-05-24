@@ -5,7 +5,7 @@ from classes.players import PlayerModel, UpdatePlayerModel, PlayerTeamModel, Upd
 from classes.teams import TeamModel, UpdateTeamModel
 from typing import List
 
-from database import db_delete_one, db_add_one, db_find_all, db_find_one, db_update_one, db_find_some, db
+from database import db_find_one_by_other, db_delete_one, db_add_one, db_find_all, db_find_one, db_update_one, db_find_some, db
 import uvicorn
 
 app = FastAPI()
@@ -14,13 +14,9 @@ app = FastAPI()
 @app.get('/')
 def read_root():
     """
-    This Build Testing version creates
-    - **3** Seasons (Only season 2 is populated),
-    - **4** Games (Only C$ is populated),
-    - **9** Tournament Modes *(only one 1v1)*
-    - **2** Divisions *(Randomly populated)*
-    - **50** Teams  *(Randomly Generated)*
-    - **500** Players *(Randomly Generated)*
+    This Build Testing V2 creates
+    - **5** Teams  *(Randomly Generated)*
+    - **30** Players *(Randomly Generated)*
 
     Every restart, all the stats get rebuild from scratch.
 
@@ -29,121 +25,6 @@ def read_root():
     return {"Testing": "ok"}
 
 
-# @app.get('/season/search/{search}')
-# def season_search(search: str):
-#     return [season.to_dict for season in Season.get(search)]
-#
-#
-# @app.get('/seasons')
-# def all_seasons():
-#     return [season.to_dict for season in Season.instances()]
-#
-#
-# @app.get('/season/{season_id}')
-# def season_by_id(season_id: str):
-#     return Season.lookup(ObjectId(season_id)).to_dict
-#
-#
-# @app.get('/season/{season_id}/tournaments')
-# def season_tournaments(season_id: str):
-#     return [tournament.to_dict for tournament in Season.lookup(ObjectId(season_id)).tournaments]
-#
-#
-# @app.get('/games/search/{search}')
-# def game_search(search: str):
-#     return [game.to_dict for game in Game.get(search)]
-#
-#
-# @app.get('/games')
-# def all_games():
-#     return [game.to_dict for game in Game.instances()]
-#
-#
-# @app.get('/game/{game_id}')
-# def game_by_id(game_id: str):
-#     return Game.lookup(ObjectId(game_id)).to_dict
-#
-#
-# @app.get('/tournament/search/{search}')
-# def tournament_search(search: str):
-#     return [tournament.to_dict for tournament in Tournament.get(search)]
-#
-#
-# @app.get('/tournaments')
-# def all_tournaments():
-#     return [tournament.to_dict for tournament in Tournament.instances()]
-#
-#
-# @app.get('/tournament/{tournament_id}')
-# def tournament_by_id(tournament_id: str):
-#     return Tournament.lookup(ObjectId(tournament_id)).to_dict
-#
-#
-# @app.get('/tournament/{tournament_id}/teams')
-# def tournament_teams(tournament_id: str):
-#     return [team.to_dict for team in Tournament.lookup(ObjectId(tournament_id)).teams]
-#
-#
-# @app.get('/divisions')
-# def all_divisions():
-#     return [division.to_dict for division in Division.instances()]
-#
-#
-# @app.get('/division/{division_id}')
-# def division_by_id(division_id: str):
-#     return Division.lookup(ObjectId(division_id)).to_dict
-#
-#
-# @app.get('/division/{division_id}/teams')
-# def division_teams(division_id: str):
-#     return [team.to_dict for team in Division.lookup(ObjectId(division_id)).teams]
-
-#
-# @app.get('/team/search/{search}')
-# def team_search(search: str):
-#     return [team.to_dict for team in Team.get(search)]
-#
-#
-# @app.get('/teams')
-# def all_teams():
-#     return [team.to_dict for team in Team.instances()]
-#
-#
-# @app.get('/team/{team_id}')
-# def team_by_id(team_id: str):
-#     return Team.lookup(PydanticObjectId(team_id)).to_dict
-#
-#
-# @app.get('/team/{team_id}/players')
-# def team_players(team_id: str):
-#     return [player.to_dict for player in Team.lookup(PydanticObjectId(team_id)).players]
-#
-
-# @app.get('/player/search/{search}')
-# def player_search(search: str):
-#     """
-#     Search for a players with "search term" in their name.
-#
-#     This will return a **List[Player]** that matches the "search term"
-#     """
-#     return [player.to_dict for player in Player.get(search)]
-#
-#
-# @app.get('/players')
-# def all_players():
-#     return [player.to_dict for player in Player.instances()]
-#
-#
-# @app.get('/player/{player_id}')
-# def player_by_id(player_id: str):
-#     return Player.lookup(PydanticObjectId(player_id)).to_dict
-
-
-# @app.post('/player/')
-# def create_player(player: Player):
-#     Player(player)
-#     return "ok"
-
 @app.post("/player/", response_description="Register a new Player", response_model=PlayerModel)
 async def register_player(player: PlayerModel = Body(...)):
     """ To register a Player, you only need to send in
@@ -151,7 +32,8 @@ async def register_player(player: PlayerModel = Body(...)):
     "discord_id": "DISCORD_ID from the discord API",
     "game_uid": "uid from c$",
     "height": "5ft 6in"``` """
-    # TODO: Check to see if the discord_id already exists
+    if await db_find_one_by_other('players', {'discord_id': player.discord_id}) is not None:
+        raise HTTPException(status_code=406, detail=f"Discord ID {player.discord_id} already Registered")
     created_player = await db_add_one('players', player)
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=created_player)
 
@@ -165,9 +47,10 @@ async def list_players(n: int = 100):
 
 @app.get("/player/{id}", response_description="Get a single player", response_model=PlayerModel)
 async def show_player(id: str):
-    """ To retrieve a single player, send in just the ObjectID for the player """
-    # TODO: maybe also take in a discord_id
-    if player := await db_find_one("players", id) is not None:
+    """ To retrieve a single player, send in just the ObjectID for the player. You can also send in the Discord ID """
+    if (player := await db_find_one("players", id)) is not None:
+        return player
+    if (player := await db_find_one_by_other('players', {'discord_id': id})) is not None:
         return player
     raise HTTPException(status_code=404, detail=f"Player {id} not found")
 
@@ -186,9 +69,7 @@ async def update_player(id: str, player: UpdatePlayerModel = Body(...)):
     if len(player) >= 1:
         update_result = await db_update_one('players', id, player)
         if update_result.modified_count == 1:
-            if (
-                    updated_player := await db_find_one('players', id)
-            ) is not None:
+            if updated_player := await db_find_one('players', id) is not None:
                 return updated_player
     if existing_player := await db_find_one('players', id) is not None:
         return existing_player
@@ -220,7 +101,7 @@ async def list_teams(n: int = 100):
 @app.get("/team/{id}", response_description="Get a single Team", response_model=TeamModel)
 async def show_team(id: str):
     """ To retrieve a specific team, provide the Team ObjectID """
-    if team := await db_find_one('teams', id) is not None:
+    if (team := await db_find_one('teams', id)) is not None:
         return team
     raise HTTPException(status_code=404, detail=f"Team {id} not found")
 
@@ -242,7 +123,7 @@ async def update_team(id: str, team: UpdateTeamModel = Body(...)):
         if update_result.modified_count == 1:
             if (updated_team := await db_find_one('team', id)) is not None:
                 return updated_team
-    if existing_team := await db_find_one('teams', id) is not None:
+    if (existing_team := await db_find_one('teams', id)) is not None:
         return existing_team
     raise HTTPException(status_code=404, detail=f"Team {id} not found")
 
@@ -272,14 +153,18 @@ async def request_to_join_team(request: PlayerTeamModel = Body(...)):
 
 @app.put("/team/approve/{id}", response_description="Approve a team join", response_model=PlayerTeamModel)
 async def approve_team_join(id: str, request: UpdatePlayerTeamModel = Body(...)):
-    """ Approve or Decline a team join """
+    """ Approve or Decline a team join. send a {"approved":true} or {"approved":false} """
+    if request.approved is None or len(request.dict().items()) == 0:
+        raise HTTPException(status_code=402, detail=f"You must send {{'approved':true}} or {{'approved':false}}")
+
+
     request = {k: v for k, v in request.dict().items() if v is not None}
     if len(request) >= 1:
         update_result = await db_update_one('player_team_link', id, request)
         if update_result.modified_count == 1:
             if (updated_request := await db_find_one('player_team_link', id)) is not None:
                 return updated_request
-    if existing_request := await db_find_one('player_team_link', id) is not None:
+    if (existing_request := await db_find_one('player_team_link', id)) is not None:
         return existing_request
     raise HTTPException(status_code=404, detail=f"Team Join request {id} not found")
     # TODO: Max team is 10
