@@ -24,7 +24,7 @@ async def db_find_all(db_name: str, amt: int):
     return results
 
 
-async def db_find_some(db_name: str, db_filter: dict, exclude: Union[dict, None] = dict):
+async def db_find_some(db_name: str, db_filter: dict, exclude: Union[dict, None] = None):
     results = await db[db_name].find(db_filter, projection=exclude).to_list(100)
     return results
 
@@ -42,6 +42,11 @@ async def db_find_one_by_other(db_name: str, query: dict):
 async def db_update_one(db_name: str, obj_id: str, obj: dict):
     obj = jsonable_encoder(obj)
     result = await db[db_name].update_one({"_id": obj_id}, {"$set": obj})
+    return result
+
+
+async def db_count_items(db_name: str, query: Union[dict, None] = None):
+    result = await db[db_name].count_documents(query)
     return result
 
 

@@ -5,7 +5,7 @@ from classes.players import PlayerModel, UpdatePlayerModel, PlayerTeamModel, Upd
 from classes.teams import TeamModel, UpdateTeamModel
 from typing import List
 
-from database import db_find_one_by_other, db_delete_one, db_add_one, db_find_all, db_find_one, db_update_one, db_find_some, db
+from database import db_count_items, db_find_one_by_other, db_delete_one, db_add_one, db_find_all, db_find_one, db_update_one, db_find_some, db
 import uvicorn
 
 app = FastAPI()
@@ -60,10 +60,7 @@ async def update_player(id: str, player: UpdatePlayerModel = Body(...)):
     """ Updatable fields are:
     ```"name": "If you are planning on changing the in-game name",
     "email": "to make email updates",
-    "game_uid": "to make corrections to the UID",
-    "height": "to make corrections to the in-game height",
-    "belongs_to_team": ["list of Team ObjectIDs"],
-    "belongs_to_tournament": ["list of Tournament ObjectID"]. Primarily 1V1 tournaments```
+    "game_uid": "to make corrections to the UID"```
     """
     player = {k: v for k, v in player.dict().items() if v is not None}
     if len(player) >= 1:
@@ -83,6 +80,8 @@ async def register_team(team: TeamModel = Body(...)):
     "captain": "The captains Player ObjectID",
     "team_motto": "A brief Motto"```
     """
+    # TODO: Check if team name is taken
+    # TODO: Check if player is a team captain already
     created_team = await db_add_one('teams', team)
     await request_to_join_team(PlayerTeamModel(
         team=created_team['_id'],
@@ -113,10 +112,9 @@ async def update_team(id: str, team: UpdateTeamModel = Body(...)):
      "team_motto": "Updated team motto",
      "captain": "provide 1 Player ObjectID for new captain",
      "team_logo": "url for a team logo image",
-     "co_captain": "player ObjectID for a co-captain. They can also make changes to the team",
-     "belongs_to_division": ["Division ObjectID"],
-     "belongs_to_tournaments": ["Tournament ObjectID"],
+     "co_captain": "player ObjectID for a co-captain. They can also make changes to the team"
      "active": False or True to mark as active``` """
+    # add CO-CAPTAIN CHECKS
     team = {k: v for k, v in team.dict().items() if v is not None}
     if len(team) >= 1:
         update_result = await db_update_one('teams', id, team)
@@ -131,9 +129,18 @@ async def update_team(id: str, team: UpdateTeamModel = Body(...)):
 @app.get("/team/{id}/approvals", response_description="List all pending Approvals",
          response_model=List[PlayerTeamModel])
 async def list_pending_approvals(id: str):
+    """
+    Lists pending approvals by team
+    """
     # results = await db_find_some("player_team_link", {"team": {"$eq": id}, "approved": {"$ne": True}})
     results = await db_find_some("player_team_link", {"team": id, "approved": None})
     return results
+
+
+@app.get("/approvals", response_description="List ALL pending Approvals", response_model=List[PlayerTeamModel])
+async def list_all_pending_approvals():
+    """ Lists ALL Pending Approvals on the server"""
+    return
 
 
 @app.get("/team/{id}/players", response_description="List all Players in a Team", response_model=List[PlayerModel])
@@ -146,7 +153,8 @@ async def list_team_players(id: str):
 @app.put("/team/join/", response_description="Request to Join a Team", response_model=PlayerTeamModel)
 async def request_to_join_team(request: PlayerTeamModel = Body(...)):
     """ To request to join a team, a player creates a request
-     and a team has to approve it """
+     and a team captain or cocaptain has to approve it """
+    # TODO: Check if the same request has been sent in
     created_player = await db_add_one("player_team_link", request)
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=created_player)
 
@@ -157,17 +165,18 @@ async def approve_team_join(id: str, request: UpdatePlayerTeamModel = Body(...))
     if request.approved is None or len(request.dict().items()) == 0:
         raise HTTPException(status_code=402, detail=f"You must send {{'approved':true}} or {{'approved':false}}")
 
-
-    request = {k: v for k, v in request.dict().items() if v is not None}
-    if len(request) >= 1:
-        update_result = await db_update_one('player_team_link', id, request)
-        if update_result.modified_count == 1:
-            if (updated_request := await db_find_one('player_team_link', id)) is not None:
-                return updated_request
-    if (existing_request := await db_find_one('player_team_link', id)) is not None:
-        return existing_request
-    raise HTTPException(status_code=404, detail=f"Team Join request {id} not found")
-    # TODO: Max team is 10
+    if (current_request := await db_find_one('player_team_link', id)) is not None: # found the request
+        # check the team count for max
+        if await db_count_items('player_team_link', {'team': current_request['team'], 'approved': True}) >= 5:
+            raise HTTPException(status_code=402, detail=f'Team is full!')
+        # not at max
+        else:
+            update_result = await db_update_one('player_team_link', id, request.dict())
+            if update_result.modified_count == 1:
+                if (updated_request := await db_find_one('player_team_link', id)) is not None:
+                    return updated_request
+    else:
+        raise HTTPException(status_code=404, detail=f"Team Join request {id} not found") # did not find the request
 
 
 @app.delete("/team/remove/{id}", response_description="Remove a Player from Team")
@@ -176,6 +185,11 @@ async def remove_player(id: str):
     if delete_result.deleted_count == 1:
         return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=delete_result)
     raise HTTPException(status_code=404, detail=f'Player {id} not found')
+
+
+@app.get('/team/{id}/captains', response_description='Get the teams captain / co-captain', response_model=List[PlayerModel])
+async def get_captains(team_id: str):
+    return
 
 
 @app.get("/db/drop")
