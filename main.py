@@ -66,7 +66,7 @@ async def update_player(id: str, player: UpdatePlayerModel = Body(...)):
     if len(player) >= 1:
         update_result = await db_update_one('players', id, player)
         if update_result.modified_count == 1:
-            if updated_player := await db_find_one('players', id) is not None:
+            if (updated_player := await db_find_one('players', id)) is not None:
                 return updated_player
     if existing_player := await db_find_one('players', id) is not None:
         return existing_player
@@ -80,8 +80,12 @@ async def register_team(team: TeamModel = Body(...)):
     "captain": "The captains Player ObjectID",
     "team_motto": "A brief Motto"```
     """
-    # TODO: Check if team name is taken
-    # TODO: Check if player is a team captain already
+    if await db_find_some('teams', {'name': team.name}):
+        raise HTTPException(status_code=406, detail=f"{team.name} is already a Team")
+
+    if await db_find_some('teams', {'$or': [{'captain': str(team.captain)}, {'co_captain': str(team.captain)}]}):
+        raise HTTPException(status_code=406, detail=f"{team.captain} is already a captain or co-captain of a team")
+
     created_team = await db_add_one('teams', team)
     await request_to_join_team(PlayerTeamModel(
         team=created_team['_id'],
@@ -114,9 +118,18 @@ async def update_team(id: str, team: UpdateTeamModel = Body(...)):
      "team_logo": "url for a team logo image",
      "co_captain": "player ObjectID for a co-captain. They can also make changes to the team"
      "active": False or True to mark as active``` """
-    # add CO-CAPTAIN CHECKS
+    # TODO: add CO-CAPTAIN CHECKS, has to be someone from a team
+    # TODO: fix this, it wont update teams because of a BSON error
     team = {k: v for k, v in team.dict().items() if v is not None}
     if len(team) >= 1:
+        # check to see if co-captain is a team member
+        if 'co_captain' in team.keys():
+            team_players = await list_team_players(id)
+            player_ids = [x['_id'] for x in team_players]
+            #print(str(team['co_captain']) in player_ids)
+            if str(team['co_captain']) not in player_ids:
+            # if not await db_find_some('player_team_link', {'player': team['co_captain'], 'team': id}):
+                raise HTTPException(status_code=406, detail=f"That Player is not a member of the team")
         update_result = await db_update_one('teams', id, team)
         if update_result.modified_count == 1:
             if (updated_team := await db_find_one('team', id)) is not None:
@@ -140,7 +153,8 @@ async def list_pending_approvals(id: str):
 @app.get("/approvals", response_description="List ALL pending Approvals", response_model=List[PlayerTeamModel])
 async def list_all_pending_approvals():
     """ Lists ALL Pending Approvals on the server"""
-    return
+    results = await db_find_some('player_team_link', {"approved": None})
+    return results
 
 
 @app.get("/team/{id}/players", response_description="List all Players in a Team", response_model=List[PlayerModel])
@@ -154,8 +168,10 @@ async def list_team_players(id: str):
 async def request_to_join_team(request: PlayerTeamModel = Body(...)):
     """ To request to join a team, a player creates a request
      and a team captain or cocaptain has to approve it """
-    # TODO: Check if the same request has been sent in
-    created_player = await db_add_one("player_team_link", request)
+    if not await db_find_some('player_team_link', {'player': str(request.player), 'team': str(request.team)}):
+        created_player = await db_add_one("player_team_link", request)
+    else:
+        raise HTTPException(status_code=406, detail="A similar request has already been submitted")
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=created_player)
 
 
@@ -189,7 +205,9 @@ async def remove_player(id: str):
 
 @app.get('/team/{id}/captains', response_description='Get the teams captain / co-captain', response_model=List[PlayerModel])
 async def get_captains(team_id: str):
-    return
+    team = await db_find_one('team', team_id)
+    captains = await db_find_some('players', {'_id': team['captain'], '_id': team['co_captain']})
+    return captains
 
 
 @app.get("/db/drop")

@@ -24,13 +24,13 @@ async def db_find_all(db_name: str, amt: int):
     return results
 
 
-async def db_find_some(db_name: str, db_filter: dict, exclude: Union[dict, None] = None):
-    results = await db[db_name].find(db_filter, projection=exclude).to_list(100)
+async def db_find_some(db_name: str, db_filter: dict, exclude: Union[dict, None] = None, amt: int = 100):
+    results = await db[db_name].find(db_filter, projection=exclude).to_list(amt)
     return results
 
 
-async def db_find_one(db_name: str, obj_id: str):
-    result = await db[db_name].find_one({"_id": obj_id})
+async def db_find_one(db_name: str, obj_id: str, projection: dict = None):
+    result = await db[db_name].find_one({"_id": obj_id}, projection=projection)
     return result
 
 
