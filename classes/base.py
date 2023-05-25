@@ -24,7 +24,7 @@ class PyObjectId(ObjectId):
 
 class Base(BaseModel):
     name: str
-    id: PyObjectId = Field(default_factory=PyObjectId, alias='_id')
+
     _instances = []
     # logger: TransactionLogger
 

@@ -118,18 +118,13 @@ async def update_team(id: str, team: UpdateTeamModel = Body(...)):
      "team_logo": "url for a team logo image",
      "co_captain": "player ObjectID for a co-captain. They can also make changes to the team"
      "active": False or True to mark as active``` """
-    # TODO: add CO-CAPTAIN CHECKS, has to be someone from a team
-    # TODO: fix this, it wont update teams because of a BSON error
     team = {k: v for k, v in team.dict().items() if v is not None}
     if len(team) >= 1:
-        # check to see if co-captain is a team member
         if 'co_captain' in team.keys():
-            team_players = await list_team_players(id)
-            player_ids = [x['_id'] for x in team_players]
-            #print(str(team['co_captain']) in player_ids)
-            if str(team['co_captain']) not in player_ids:
-            # if not await db_find_some('player_team_link', {'player': team['co_captain'], 'team': id}):
+            team['co_captain'] = str(team['co_captain'])
+            if team['co_captain'] not in [x['_id'] for x in await list_team_players(id)]:
                 raise HTTPException(status_code=406, detail=f"That Player is not a member of the team")
+
         update_result = await db_update_one('teams', id, team)
         if update_result.modified_count == 1:
             if (updated_team := await db_find_one('team', id)) is not None:
@@ -203,10 +198,11 @@ async def remove_player(id: str):
     raise HTTPException(status_code=404, detail=f'Player {id} not found')
 
 
-@app.get('/team/{id}/captains', response_description='Get the teams captain / co-captain', response_model=List[PlayerModel])
+@app.get('/team/{team_id}/captains', response_description='Get the teams captain / co-captain', response_model=List[PlayerModel])
 async def get_captains(team_id: str):
-    team = await db_find_one('team', team_id)
-    captains = await db_find_some('players', {'_id': team['captain'], '_id': team['co_captain']})
+    team = await db_find_one('teams', team_id)
+    captains = await db_find_some('players', { '$or': [
+        {'_id': team['captain']}, {'_id': team['co_captain']} ]})
     return captains
 
 
