@@ -1,17 +1,12 @@
-
 from pydantic import EmailStr, Field
-from typing import List, Optional
-from bson.objectid import ObjectId
+from typing import Optional
 from classes.base import Base, PyObjectId
-
-from classes.errors import PlayerError, TournamentError, TeamError
-from transactions.transaction_log import TransactionType
 
 
 class PlayerModel(Base):
     id: PyObjectId = Field(default_factory=PyObjectId, alias='_id')
-    discord_id: str # figure out how to validate this
-    game_uid: str # figure out how to validate this
+    discord_id: str  # figure out how to validate this
+    game_uid: str  # figure out how to validate this
     calibrated_height: str
     promo_email: Optional[EmailStr]
 
@@ -22,9 +17,9 @@ class PlayerModel(Base):
     class Config:
         schema_extra = {
             "example": {
-                "name" : "MrRobinhood5",
+                "name": "MrRobinhood5",
                 "discord_id": "DISCORD_ID",
-                "game_uid": "abcdefghijklmnop",
+                "game_uid": "1234567890",
                 "calibrated_height": "5ft 6in",
             }
         }
@@ -41,7 +36,7 @@ class UpdatePlayerModel(Base):
             "example": {
                 "name": "New In Game Name",
                 "promo_email": "myemail@mydomain.com",
-                "game_uid": "abcdefghijklmnop",
+                "game_uid": "1234567890",
                 "calibrated_height": "5ft 6in"
             }
         }
@@ -49,9 +44,9 @@ class UpdatePlayerModel(Base):
 
 class PlayerTeamModel(Base):
     id: PyObjectId = Field(default_factory=PyObjectId, alias='_id')
-    name: Optional[str]
-    team: PyObjectId
     player: PyObjectId
+    name: Optional[str]
+    team: Optional[PyObjectId]
     approved: Optional[bool]
 
     class Config:
