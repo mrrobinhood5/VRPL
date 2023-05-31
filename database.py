@@ -45,6 +45,12 @@ async def db_update_one(db_name: str, obj_id: str, obj: dict):
     return result
 
 
+async def db_update_one_discord(db_name: str, obj_id: str, obj: dict):
+    obj = jsonable_encoder(obj)
+    result = await db[db_name].update_one({'discord_id': obj_id}, {'$set': obj})
+    return result
+
+
 async def db_count_items(db_name: str, query: Union[dict, None] = None):
     result = await db[db_name].count_documents(query)
     return result
