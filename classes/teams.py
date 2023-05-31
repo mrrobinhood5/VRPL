@@ -1,6 +1,6 @@
 from pydantic import HttpUrl, Field
 from classes.base import Base, PyObjectId
-from typing import Optional
+from typing import Optional, Union
 
 
 class TeamModel(Base):
@@ -8,7 +8,7 @@ class TeamModel(Base):
     team_motto: str
     captain: PyObjectId
     team_logo: Optional[HttpUrl]
-    co_captain: Optional[PyObjectId]
+    co_captain: Optional[Union[PyObjectId, None]] = None
     active: bool = True
     team_mmr: int = 0
 

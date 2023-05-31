@@ -22,7 +22,7 @@ async def register_team(team: TeamModel = Body(...)):
         raise HTTPException(status_code=406, detail=f"{team.captain} is already a captain or co-captain of a team")
 
     created_team = await db_add_one('teams', team)
-    await request_to_join_team(PlayerTeamModel(
+    await request_to_join_team(str(team.id), PlayerTeamModel(
         team=created_team['_id'],
         player=created_team['captain'],
         approved=True))
@@ -77,12 +77,15 @@ async def list_team_players(team_id: str):
     return players
 
 
-@router.put("/join", response_description="Request to Join a Team", response_model=PlayerTeamModel,
-            tags=['teams'])
-async def request_to_join_team(request: PlayerTeamModel = Body(...)):
+@router.put("/{team_id}/join", response_description="Request to Join a Team", response_model=PlayerTeamModel)
+async def request_to_join_team(team_id: str, request: PlayerTeamModel = Body(...)):
     """ To request to join a team, a player creates a request
      and a team captain or co-captain has to approve it """
-    if not await db_find_some('player_team_link', {'player': str(request.player), 'team': str(request.team)}):
+    # check to see if it is a valid team
+    if not await db_find_one('teams', team_id, {'active': 1}):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='That team is not found')
+    if not await db_find_some('player_team_link', {'player': str(request.player), 'team': team_id}):
+        request.team = team_id
         created_player = await db_add_one("player_team_link", request)
     else:
         raise HTTPException(status_code=406, detail="A similar request has already been submitted")
@@ -94,11 +97,11 @@ async def request_to_join_team(request: PlayerTeamModel = Body(...)):
 async def approve_team_join(approval_id: str, request: UpdatePlayerTeamModel = Body(...)):
     """ Approve or Decline a team join. send a {"approved":true} or {"approved":false} """
     if request.approved is None or len(request.dict().items()) == 0:
-        raise HTTPException(status_code=402, detail=f"You must send {{'approved':true}} or {{'approved':false}}")
+        raise HTTPException(status_code=406, detail=f"You must send {{'approved':true}} or {{'approved':false}}")
     if (current_request := await db_find_one('player_team_link', approval_id)) is not None:  # found the request
         # check the team count for max
-        if await db_count_items('player_team_link', {'team': current_request['team'], 'approved': True}) >= 5:
-            raise HTTPException(status_code=402, detail=f'Team is full!')
+        if await db_count_items('player_team_link', {'team': current_request['team'], 'approved': True}) >= 10:
+            raise HTTPException(status_code=406, detail=f'Team is full!')
         else:
             update_result = await db_update_one('player_team_link', approval_id, request.dict())
             if update_result.modified_count == 1:
