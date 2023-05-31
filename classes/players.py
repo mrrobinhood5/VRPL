@@ -1,3 +1,4 @@
+import discord
 from pydantic import EmailStr, Field
 from typing import Optional
 from classes.base import Base, PyObjectId
@@ -68,3 +69,16 @@ class UpdatePlayerTeamModel(Base):
                 "approved": True
             }
         }
+
+
+class PlayerEmbed(discord.Embed):
+
+    def __init__(self, player: PlayerModel, user: discord.User):
+        super().__init__(title=player.name, description=f'AKA {user.name}')
+        self.color = discord.Color.orange()
+        self.set_thumbnail(url=user.avatar.url)
+        self.set_footer(text=f'Banned: {player.is_banned} | Suspended: {player.is_suspended}')
+        self.add_field(name='MMR', value=player.player_mmr, inline=True)
+        self.add_field(name='Game UID', value=player.game_uid, inline=True)
+        self.add_field(name='Calibrated Height', value=player.calibrated_height, inline=True)
+

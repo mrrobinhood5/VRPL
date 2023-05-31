@@ -3,7 +3,7 @@ from discord import app_commands
 from discord import Interaction
 
 from routers.players import register_player, list_players, show_player, update_player
-from classes.players import PlayerModel, UpdatePlayerModel
+from classes.players import PlayerModel, UpdatePlayerModel, PlayerEmbed
 
 from fastapi.exceptions import HTTPException
 
@@ -57,16 +57,19 @@ class PlayerCommands(commands.GroupCog, name='players'):
         """ Displays your own player """
         await inter.response.defer()
         me = await show_player(str(inter.user.id))
-        await inter.followup.send(f'{me}')
+        me = PlayerModel(**me)
+        await inter.followup.send(embed=PlayerEmbed(me, inter.user))
 
     @app_commands.command(name='search', description='Search for a player by name')
     async def player_search(self, inter: Interaction, name: str):
         """ Searches for a Player or Players """
         await inter.response.defer()
         players = await list_players()
+
         players = [player for player in players if name.lower() in player['name'].lower()]
         await inter.followup.send(f'{players}')
 
+# TODO: Create the embeds that show Player Objects
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(PlayerCommands(bot))
