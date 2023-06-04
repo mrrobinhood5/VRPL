@@ -77,7 +77,7 @@ async def list_team_players(team_id: str):
     return players
 
 
-@router.put("/{team_id}/join", response_description="Request to Join a Team", response_model=PlayerTeamModel)
+@router.post("/{team_id}/join", response_description="Request to Join a Team", response_model=PlayerTeamModel)
 async def request_to_join_team(team_id: str, request: PlayerTeamModel = Body(...)):
     """ To request to join a team, a player creates a request
      and a team captain or co-captain has to approve it """
@@ -127,3 +127,4 @@ async def get_captains(team_id: str):
     captains = await db_find_some('players', {'$or': [
         {'_id': team['captain']}, {'_id': team['co_captain']}]})
     return captains
+

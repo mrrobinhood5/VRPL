@@ -1,17 +1,19 @@
 import requests
 from json import dumps
-from utils import generate_username, generate_guid, generate_team_name, generate_description, generate_email
+from utils import generate_username, generate_guid, generate_team_name, generate_description, generate_email, get_discord_ids
 from random import randint
 
 api_url = 'http://localhost:8080'
 
 # clear all the collections
-drop_db = requests.get(f'{api_url}/db/drop')
+drop_db = requests.get(f'{api_url}/admin/db_drop')
+
+discord_id = get_discord_ids()
 
 # generate 30 players
 test_players = [dumps({
     "name": generate_username(),
-    "discord_id": generate_guid(),
+    "discord_id": next(discord_id),
     "game_uid": generate_guid(),
     "promo_email": generate_email(),
     "calibrated_height": f'{randint(55, 75)} in'}) for x in range(30)]
@@ -27,7 +29,7 @@ test_teams = [{
     "name": generate_team_name(),
     "team_motto": generate_description(),
     "captain": player['_id'],
-    "team_logo": "https://picsum.photos/200"} for player in players[:5]]
+    "team_logo": requests.get('https://loremflickr.com/320/240').request.url} for player in players[:5]]
 
 for team in test_teams:
     x = requests.post(f'{api_url}/teams/register', data=dumps(team))
@@ -44,7 +46,7 @@ team_ids = [team['_id'] for team in test_teams]
 for i, team in enumerate(team_ids):
     for players in grouped_players[i]:
         print({'player': players, 'team': team})
-        x = requests.put(f'{api_url}/teams/{team}/join', data=dumps({'player': players}))
+        x = requests.post(f'{api_url}/teams/{team}/join', data=dumps({'player': players}))
 
 # mark all approvals
 pending_approvals = requests.get(f'{api_url}/approvals/pending').json()

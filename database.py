@@ -59,3 +59,47 @@ async def db_count_items(db_name: str, query: Union[dict, None] = None):
 async def db_delete_one(db_name: str, obj_id: str):
     result = await db[db_name].delete_one({'_id': obj_id})
     return result
+
+
+async def db_get_full_team(team_id: str = None):
+    pipeline = [
+        {
+            '$lookup': {
+                'from': 'players',
+                'localField': 'captain',
+                'foreignField': '_id',
+                'as': 'captain'
+            }
+        }, {
+            '$lookup': {
+                'from': 'players',
+                'localField': 'co_captain',
+                'foreignField': '_id',
+                'as': 'co_captain'
+            }
+        }, {
+            '$unwind': {
+                'path': '$captain',
+                'preserveNullAndEmptyArrays': False
+            }
+        }, {
+            '$unwind': {
+                'path': '$co_captain'
+            }
+        }, {
+            '$lookup': {
+                'from': 'player_team_link',
+                'localField': '_id',
+                'foreignField': 'team',
+                'as': 'players'
+            }
+        }, {
+            '$lookup': {
+                'from': 'players',
+                'localField': 'players.player',
+                'foreignField': '_id',
+                'as': 'players'
+            }
+        }]
+    result = await db['teams'].aggregate(pipeline).to_list(length=None)
+    return result

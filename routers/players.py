@@ -35,7 +35,7 @@ async def show_player(player_id: str):
         return player
     if (player := await db_find_one_by_other('players', {'discord_id': player_id})) is not None:
         return player
-    raise HTTPException(status_code=404, detail=f"Player {player_id} not found")
+    raise HTTPException(status_code=404, detail=f"Player is not registered")
 
 
 @router.put("/{player_id}", response_description="Update a player", response_model=PlayerModel)

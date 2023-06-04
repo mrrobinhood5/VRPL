@@ -11,7 +11,6 @@ import uvicorn
 app = FastAPI()
 bot = commands.Bot(command_prefix=BOT_PREFIX, description='VRPL Team Manager', intents=INTENTS)
 bot.owner_id = int(BOT_OWNER)
-
 discord.utils.setup_logging()
 
 app.include_router(players.router)
