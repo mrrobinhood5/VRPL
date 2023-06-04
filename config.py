@@ -9,7 +9,7 @@ INTENTS = Intents(
     bans=False, emojis=False, integrations=False, webhooks=True, invites=False, voice_states=False, presences=False,
     typing=False, message_content=True)
 BOT_OWNER = os.getenv('BOT_OWNER')
-DEFAULT_LOGO = "https://cdn.discordapp.com/emojis/1058108114626416721.webp?size=96&quality=lossless"
+DEFAULT_LOGO = "https://i.imgur.com/d4SLqgD.png"
 
 cogs = os.listdir('./cogs')
 cogs.remove("__pycache__") if "__pycache__" in cogs else 0

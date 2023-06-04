@@ -19,7 +19,7 @@ async def db_add_one(db_name: str, obj: Union[PlayerModel, TeamModel, PlayerTeam
     return created_obj
 
 
-async def db_find_all(db_name: str, amt: int):
+async def db_find_all(db_name: str, amt: int) -> list[dict]:
     results = await db[db_name].find().to_list(amt)
     return results
 
@@ -34,7 +34,7 @@ async def db_find_one(db_name: str, obj_id: str, projection: dict = None):
     return result
 
 
-async def db_find_one_by_other(db_name: str, query: dict):
+async def db_find_one_by_other(db_name: str, query: dict) -> Union[dict, None]:
     result = await db[db_name].find_one(query)
     return result
 
