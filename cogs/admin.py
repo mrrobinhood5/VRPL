@@ -9,10 +9,6 @@ async def is_server_owner(ctx):
     return ctx.author == ctx.guild.owner
 
 
-# async def is_bot_owner(ctx):
-#     return ctx.author.id == ctx.bot.owner_id
-
-
 class AdminCommands(commands.Cog, name='Admin Commands'):
 
     def __init__(self, bot):
@@ -57,7 +53,6 @@ class AdminCommands(commands.Cog, name='Admin Commands'):
                 synced = await ctx.bot.tree.sync()
             await ctx.send(f"Synced {len(synced)} commands {'globally' if spec is None else 'to the current guild.'}")
             return
-
         ret = 0
         for guild in guilds:
             try:
@@ -66,7 +61,6 @@ class AdminCommands(commands.Cog, name='Admin Commands'):
                 pass
             else:
                 ret += 1
-
         await ctx.send(f"Synced the tree to {ret}/{len(guilds)}.")
 
 

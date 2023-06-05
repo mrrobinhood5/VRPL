@@ -11,5 +11,8 @@ INTENTS = Intents(
 BOT_OWNER = os.getenv('BOT_OWNER')
 DEFAULT_LOGO = "https://i.imgur.com/d4SLqgD.png"
 
+# daily quote
+QUOTES_URL = "https://zenquotes.io/api/random"
+
 cogs = os.listdir('./cogs')
 cogs.remove("__pycache__") if "__pycache__" in cogs else 0

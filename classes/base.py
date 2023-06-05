@@ -26,7 +26,6 @@ class Base(BaseModel):
     name: str
 
     _instances = []
-    # logger: TransactionLogger
 
     class Config:
         allow_population_by_field_name = True

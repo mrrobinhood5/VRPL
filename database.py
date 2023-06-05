@@ -29,7 +29,7 @@ async def db_find_some(db_name: str, db_filter: dict, exclude: Union[dict, None]
     return results
 
 
-async def db_find_one(db_name: str, obj_id: str, projection: dict = None):
+async def db_find_one(db_name: str, obj_id: str, projection: dict = None) -> dict:
     result = await db[db_name].find_one({"_id": obj_id}, projection=projection)
     return result
 

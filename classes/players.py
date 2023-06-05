@@ -1,14 +1,14 @@
 import discord
 from pydantic import EmailStr, Field
-from typing import Optional, Union
+from typing import Optional, Union, Any
 from classes.base import Base, PyObjectId
 from config import DEFAULT_LOGO
 
 
 class PlayerModel(Base):
     id: PyObjectId = Field(default_factory=PyObjectId, alias='_id')
-    discord_id: str  # figure out how to validate this
-    game_uid: str  # figure out how to validate this
+    discord_id: str
+    game_uid: str
     calibrated_height: str
     promo_email: Optional[EmailStr]
 
@@ -16,11 +16,13 @@ class PlayerModel(Base):
     is_suspended: bool = False
     player_mmr: int = 0
 
+    discord_user: Optional[Any]
+
     class Config:
         schema_extra = {
             "example": {
                 "name": "MrRobinhood5",
-                "discord_id": "DISCORD_ID",
+                "discord_id": "abc123456789",
                 "game_uid": "1234567890",
                 "calibrated_height": "5ft 6in",
             }
@@ -74,11 +76,11 @@ class UpdatePlayerTeamModel(Base):
 
 class PlayerEmbed(discord.Embed):
 
-    def __init__(self, player: PlayerModel, user: discord.User):
-        super().__init__(title=player.name, description=f'AKA {user.name}')
+    def __init__(self, player: PlayerModel):
+        super().__init__(title=player.name, description=f'AKA {player.discord_user.name}')
         self.color = discord.Color.orange()
-        if user.avatar:
-            self.set_thumbnail(url=user.avatar.url)
+        if player.discord_user.avatar:
+            self.set_thumbnail(url=player.discord_user.avatar.url)
         else:
             self.set_thumbnail(url=DEFAULT_LOGO)
         self.set_footer(text=f'Banned: {player.is_banned} | Suspended: {player.is_suspended}')
@@ -116,10 +118,10 @@ class PlayerUpdateModal(discord.ui.Modal, title='player update'):
 
 class OwnPlayerView(discord.ui.View):
 
-    def __init__(self, player: PlayerModel, user: discord.User):
+    def __init__(self, player: PlayerModel):
         super().__init__()
         self.player = player
-        self.user = user
+        self.user = player.discord_user
         self.updated_player = None
 
     @discord.ui.button(label='Update', style=discord.ButtonStyle.blurple)
@@ -141,37 +143,38 @@ class OwnPlayerView(discord.ui.View):
 
 class PlayerCarousel(discord.ui.View):
 
-    def __init__(self, objects: Union[list[tuple[PlayerModel, discord.User]], None] = None):
+    def __init__(self, players: Union[list[PlayerModel], None] = None):
         super().__init__()
-        self.objects = objects
+        self.players = players
         self.obj_index = 0
         self.timeout = None
         self.updated_player = None
 
+    def is_me(self, inter: discord.Interaction, player: PlayerModel) -> bool:
+        return inter.user.id == player.discord_user.id
+
     @property
     def player_count(self):
-        return len(self.objects)
+        return len(self.players)
 
     @property
     def next_player(self):
         self.obj_index = (self.obj_index + 1) % self.player_count
-        yield self.objects[self.obj_index]
+        yield self.players[self.obj_index]
 
     @property
     def prev_player(self):
         self.obj_index = (self.obj_index - 1) % self.player_count
-        yield self.objects[self.obj_index]
+        yield self.players[self.obj_index]
 
     @discord.ui.button(label='< Previous', style=discord.ButtonStyle.green)
     async def previous(self, inter: discord.Interaction, button: discord.ui.Button):
-        player, user = next(self.prev_player)
-        if inter.user.id == user.id:
+        if self.is_me(inter, player := next(self.prev_player)):
             self.update.disabled = False
         else:
             self.update.disabled = True
-
         self.counter.label = f'{self.obj_index + 1} of {self.player_count}'
-        await inter.response.edit_message(embed=PlayerEmbed(player, user), view=self)
+        await inter.response.edit_message(embed=PlayerEmbed(player), view=self)
 
     @discord.ui.button(label=f'1 of x', style=discord.ButtonStyle.grey)
     async def counter(self, inter: discord.Interaction, button: discord.ui.Button):
@@ -187,11 +190,9 @@ class PlayerCarousel(discord.ui.View):
 
     @discord.ui.button(label='Next >', style=discord.ButtonStyle.green)
     async def next(self, inter: discord.Interaction, button: discord.ui.Button):
-        player, user = next(self.next_player)
-        if inter.user.id == user.id:
+        if self.is_me(player := next(self.next_player)):
             self.update.disabled = False
         else:
             self.update.disabled = True
-
         self.counter.label = f'{self.obj_index + 1} of {self.player_count}'
-        await inter.response.edit_message(embed=PlayerEmbed(player, user), view=self)
+        await inter.response.edit_message(embed=PlayerEmbed(player), view=self)

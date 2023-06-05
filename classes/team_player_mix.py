@@ -71,9 +71,9 @@ class FullTeamEmbed(discord.Embed):
 
 
 class TeamCarousel(discord.ui.View):
-    def __init__(self, objects: Union[list[FullTeamModel], None] = None):
+    def __init__(self, teams: Union[list[FullTeamModel], None] = None):
         super().__init__()
-        self.objects = objects
+        self.objects = teams
         self.obj_index = 0
         self.timeout = None
 

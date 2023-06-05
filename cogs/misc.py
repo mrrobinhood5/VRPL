@@ -1,6 +1,7 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
+import requests
 
 
 class MiscCog(commands.Cog):
@@ -10,8 +11,11 @@ class MiscCog(commands.Cog):
 
     @app_commands.command(name='hello')
     async def hello(self, inter: discord.Interaction):
-        """ Just says Hello """
-        await inter.response.send_message(f'### Well hello to you too {inter.user.name}')
+        """ Just says Hello and gives inspirational quote """
+        quote = requests.get('https://zenquotes.io/api/random').json()[0]
+        embed = discord.Embed(color=discord.Color.brand_green(), title=f'{quote.get("a")}:',
+                              description=f'{quote.get("d")}')
+        await inter.response.send_message(f'### Well hello to you too {inter.user.name}\n', embed=embed)
 
 
 async def setup(bot: commands.Bot) -> None:

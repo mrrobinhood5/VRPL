@@ -30,7 +30,7 @@ async def register_team(team: TeamModel = Body(...)):
 
 
 @router.get("/all", response_description="List all registered teams", response_model=list[TeamModel])
-async def list_teams(n: int = 100):
+async def list_teams(n: int = 100) -> list[dict]:
     """ Lists all registered teams """
     teams = await db_find_all('teams', n)
     return teams
@@ -128,3 +128,9 @@ async def get_captains(team_id: str):
         {'_id': team['captain']}, {'_id': team['co_captain']}]})
     return captains
 
+
+@router.get('/{team_id}/members', response_description='Get the team members', response_model=list[PlayerModel])
+async def get_team_members(team_id: str):
+    player_list = await db_find_some('player_team_link', {'team': team_id}, exclude={'player': 1})
+    player_list = [await db_find_one('players', player['player']) for player in player_list]
+    return player_list
