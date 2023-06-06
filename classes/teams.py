@@ -70,10 +70,10 @@ class TeamUpdateModal(Modal, title='Team Update'):
     async def on_submit(self, inter: Interaction) -> None:
         updated_team = {
             "name": self.name.value or None,
-            "motto": self.motto.value or None,
-            "logo": self.logo.value or None,
+            "team_motto": self.motto.value or None,
+            "team_logo": self.logo.value or None,
         }
-        self.view.updated_team = updated_team
+        self.view.updated_team = UpdateTeamModel(**updated_team)
         await inter.response.send_message(f'Updates have been sent')
         self.stop()
 

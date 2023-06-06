@@ -13,9 +13,9 @@ from classes.errors import GenericErrorEmbed
 from fastapi.exceptions import HTTPException
 
 
-async def process_player_update(inter: Interaction, view: Union[OwnPlayerView, PlayerCarousel]):
+async def process_player_update(inter: Interaction, player: UpdatePlayerModel):
     try:
-        await update_player(str(inter.user.id), UpdatePlayerModel(**view.updated_player))
+        await update_player(str(inter.user.id), player)
     except HTTPException as e:
         channel = inter.channel
         await inter.client.get_channel(channel.id).send(embed=GenericErrorEmbed(inter.user, e))

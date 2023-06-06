@@ -3,6 +3,8 @@ from pydantic import EmailStr, Field
 from typing import Optional, Union, Any
 from classes.base import Base, PyObjectId
 from config import DEFAULT_LOGO
+from discord import Interaction, ButtonStyle
+from discord.ui import Button
 
 
 class PlayerModel(Base):
@@ -117,7 +119,7 @@ class PlayerUpdateModal(discord.ui.Modal, title='Player update'):
             "calibrated_height": self.calibrated_height.value or None,
             "promo_email": self.promo_email.value or None
         }
-        self.view.updated_player = updated_player
+        self.view.updated_player = UpdatePlayerModel(**updated_player)
         await inter.response.send_message(f'Updates have been sent')
         self.stop()
 
@@ -134,7 +136,7 @@ class OwnPlayerView(discord.ui.View):
         self.updated_player = None
 
     @discord.ui.button(label='Update', style=discord.ButtonStyle.blurple)
-    async def update(self, inter: discord.Interaction, button: discord.ui.Button):
+    async def update(self, inter: Interaction, button: discord.ui.Button):
         modal = PlayerUpdateModal(view=self)
         await inter.response.send_modal(modal)
         await modal.wait()
@@ -177,7 +179,7 @@ class PlayerCarousel(discord.ui.View):
         yield self.players[self.obj_index]
 
     @discord.ui.button(label='< Previous', style=discord.ButtonStyle.green)
-    async def previous(self, inter: discord.Interaction, button: discord.ui.Button):
+    async def previous(self, inter: Interaction, button: Button):
         if self.is_me(inter, player := next(self.prev_player)):
             self.update.disabled = False
         else:
@@ -185,20 +187,20 @@ class PlayerCarousel(discord.ui.View):
         self.counter.label = f'{self.obj_index + 1} of {self.player_count}'
         await inter.response.edit_message(embed=PlayerEmbed(player), view=self)
 
-    @discord.ui.button(label=f'1 of x', style=discord.ButtonStyle.grey)
-    async def counter(self, inter: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(label=f'1 of x', style=ButtonStyle.grey)
+    async def counter(self, inter: Interaction, button: Button):
         self.counter.label = f'{self.obj_index + 1} of {self.player_count}'
         await inter.response.edit_message(view=self)
 
-    @discord.ui.button(label='Update', style=discord.ButtonStyle.blurple, disabled=True)
-    async def update(self, inter: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(label='Update', style=ButtonStyle.blurple, disabled=True)
+    async def update(self, inter: Interaction, button: Button):
         modal = PlayerUpdateModal(view=self)
         await inter.response.send_modal(modal)
         await modal.wait()
         self.stop()
 
-    @discord.ui.button(label='Next >', style=discord.ButtonStyle.green)
-    async def next(self, inter: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(label='Next >', style=ButtonStyle.green)
+    async def next(self, inter: Interaction, button: Button):
         if self.is_me(inter, player := next(self.next_player)):
             self.update.disabled = False
         else:
