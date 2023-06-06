@@ -89,7 +89,16 @@ class PlayerEmbed(discord.Embed):
         self.add_field(name='Calibrated Height', value=f'```{player.calibrated_height}```')
 
 
-class PlayerUpdateModal(discord.ui.Modal, title='player update'):
+class SelfPlayerEmbed(PlayerEmbed):
+
+    def __init__(self, player: PlayerModel):
+        super().__init__(player=player)
+        self.add_field(name='E-mail', value=f'```{player.promo_email}```')
+        self.add_field(name='Warnings', value=f'```List Warnings Here```')
+        self.add_field(name='Offences', value=f'```List Offences Here```')
+
+
+class PlayerUpdateModal(discord.ui.Modal, title='Player update'):
     name = discord.ui.TextInput(label='Name', custom_id='name', placeholder='New Name', required=False)
     game_uid = discord.ui.TextInput(label='UID', custom_id='game_uid', placeholder='Updated UID', required=False)
     calibrated_height = discord.ui.TextInput(label='Calibrated Height', custom_id='calibrated_height',
@@ -112,8 +121,8 @@ class PlayerUpdateModal(discord.ui.Modal, title='player update'):
         await inter.response.send_message(f'Updates have been sent')
         self.stop()
 
-    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
-        await interaction.response.send_message('Oops! Something went wrong.', ephemeral=True)
+    async def on_error(self, inter: discord.Interaction, error: Exception) -> None:
+        await inter.response.send_message('Oops! Something went wrong.', ephemeral=True)
 
 
 class OwnPlayerView(discord.ui.View):
@@ -190,7 +199,7 @@ class PlayerCarousel(discord.ui.View):
 
     @discord.ui.button(label='Next >', style=discord.ButtonStyle.green)
     async def next(self, inter: discord.Interaction, button: discord.ui.Button):
-        if self.is_me(player := next(self.next_player)):
+        if self.is_me(inter, player := next(self.next_player)):
             self.update.disabled = False
         else:
             self.update.disabled = True

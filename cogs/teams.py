@@ -8,13 +8,13 @@ from routers.teams import register_team, list_teams, get_team_members
 from routers.players import show_player, get_player_team
 
 from classes.teams import TeamModel, NewTeamEmbed
-from classes.team_player_mix import FullTeamModel, FullTeamEmbed, TeamCarousel
+from classes.team_player_mix import FullTeamModel, FullTeamEmbed, TeamCarousel, OwnTeamView
 from classes.players import PlayerModel
 
 from classes.errors import GenericErrorEmbed
 import json
 
-# TODO: put the full team logic in its own function
+
 class TeamCommands(commands.GroupCog, name='teams'):
 
     def __init__(self, bot: commands.Bot) -> None:
@@ -92,7 +92,8 @@ class TeamCommands(commands.GroupCog, name='teams'):
             await inter.followup.send(embed=GenericErrorEmbed(inter.user, e))
 
         full_team = await self.build_full_team(TeamModel(**team))
-        await inter.followup.send(embed=FullTeamEmbed(inter, full_team))
+        view = OwnTeamView(full_team)
+        await inter.followup.send(embed=FullTeamEmbed(inter, full_team), view=view)
 
 
 async def setup(bot: commands.Bot):

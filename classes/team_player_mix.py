@@ -1,9 +1,13 @@
-from pydantic import HttpUrl, Field
-from typing import Optional, Union
-from classes.base import Base, PyObjectId
-from classes.teams import TeamModel
-from classes.players import PlayerModel
 import discord
+from discord.ui import View, button, Button
+from discord import Interaction
+
+from typing import Optional, Union
+
+from classes.teams import TeamModel, TeamUpdateModal
+
+from classes.players import PlayerModel
+
 from config import DEFAULT_LOGO
 
 
@@ -54,7 +58,7 @@ class FullTeamModel(TeamModel):
             }
         }
 
-# TODO: Rework the Full Team Embed
+
 class FullTeamEmbed(discord.Embed):
 
     def __init__(self, inter: discord.Interaction, team: FullTeamModel):
@@ -64,13 +68,14 @@ class FullTeamEmbed(discord.Embed):
         self.set_footer(text=f'Active: {team.active}')
         self.add_field(name='MMR', value=f'```{team.team_mmr}```', inline=True)
         self.add_field(name='Captain', value=f'```{team.captain.name}```')
+        self.add_field(name='CoCaptain', value=f'```{team.co_captain.name if team.co_captain else None}```')
+        players = f''
+        for player in team.members:
+            players += f'`{player.name}`\n'
+        self.add_field(name='Players', value=players)
 
-        self.add_field(name='CoCaptain', value=f'```{team.co_captain.name}```')
-        players = [player.name for player in team.members]
-        self.add_field(name='Players', value=f'```{players} ```')
 
-
-class TeamCarousel(discord.ui.View):
+class TeamCarousel(View):
     def __init__(self, teams: Union[list[FullTeamModel], None] = None):
         super().__init__()
         self.objects = teams
@@ -101,6 +106,13 @@ class TeamCarousel(discord.ui.View):
         self.counter.label = f'{self.obj_index + 1} of {self.team_count}'
         await inter.response.edit_message(view=self)
 
+    @discord.ui.button(label=f'Update', style=discord.ButtonStyle.blurple, disabled=True)
+    async def update(self, inter: discord.Interaction, button: discord.ui.Button):
+        modal = TeamUpdateModal(view=self)
+        await inter.response.send_modal(modal)
+        await modal.wait()
+        self.stop()
+
     @discord.ui.button(label='Next >', style=discord.ButtonStyle.green)
     async def next(self, inter: discord.Interaction, button: discord.ui.Button):
         self.counter.label = f'{self.obj_index + 1} of {self.team_count}'
@@ -109,3 +121,38 @@ class TeamCarousel(discord.ui.View):
     @discord.ui.button(label='Request to Join', style=discord.ButtonStyle.red)
     async def join(self, inter: discord.Interaction, button: discord.ui.Button):
         pass
+
+
+class OwnTeamView(View):
+
+    def __init__(self, team: FullTeamModel):
+        super().__init__()
+        self.team = team
+        self.updated_team = None
+
+    @discord.ui.button(label='Update', style=discord.ButtonStyle.blurple)
+    async def update(self, inter: Interaction, button: Button):
+        modal = TeamUpdateModal(view=self)
+        await inter.response.send_modal(modal)
+        await modal.wait()
+        self.stop()
+
+    @discord.ui.button(label='View Pending Joins', style=discord.ButtonStyle.green)
+    async def approve_joins(self, inter: Interaction, button: Button):
+        self.stop()
+
+    @discord.ui.button(label='Remove Player', style=discord.ButtonStyle.danger)
+    async def remove_player(self, inter: Interaction, button: Button):
+        self.stop()
+    
+
+
+    async def on_error(self, inter: discord.Interaction, error: Exception, item) -> None:
+        print(f'{error} called from the view')
+
+    async def interaction_check(self, inter: Interaction) -> bool:
+        _ = (self.team.captain.id, self.team.co_captain.id if self.team.co_captain else None)
+        if inter.user.id not in _:
+            return False
+        else:
+            return True

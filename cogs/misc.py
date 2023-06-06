@@ -14,7 +14,7 @@ class MiscCog(commands.Cog):
         """ Just says Hello and gives inspirational quote """
         quote = requests.get('https://zenquotes.io/api/random').json()[0]
         embed = discord.Embed(color=discord.Color.brand_green(), title=f'{quote.get("a")}:',
-                              description=f'{quote.get("d")}')
+                              description=f'{quote.get("q")}')
         await inter.response.send_message(f'### Well hello to you too {inter.user.name}\n', embed=embed)
 
 

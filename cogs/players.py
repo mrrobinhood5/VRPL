@@ -1,14 +1,24 @@
 import logging
 
+from typing import Union
+
 from discord.ext import commands
+from discord.ui import View
 from discord import app_commands, Interaction
 
-
 from routers.players import register_player, list_players, show_player, update_player
-from classes.players import PlayerModel, UpdatePlayerModel, PlayerEmbed, PlayerCarousel, OwnPlayerView
+from classes.players import PlayerModel, UpdatePlayerModel, PlayerEmbed, PlayerCarousel, OwnPlayerView, SelfPlayerEmbed
 from classes.errors import GenericErrorEmbed
 
 from fastapi.exceptions import HTTPException
+
+
+async def process_player_update(inter: Interaction, view: Union[OwnPlayerView, PlayerCarousel]):
+    try:
+        await update_player(str(inter.user.id), UpdatePlayerModel(**view.updated_player))
+    except HTTPException as e:
+        channel = inter.channel
+        await inter.client.get_channel(channel.id).send(embed=GenericErrorEmbed(inter.user, e))
 
 
 class PlayerCommands(commands.GroupCog, name='players'):
@@ -31,12 +41,9 @@ class PlayerCommands(commands.GroupCog, name='players'):
         me.discord_user = inter.user
         view = OwnPlayerView(me)
         await inter.followup.send(content='Registration Complete', embed=PlayerEmbed(me), view=view)
+
         await view.wait()
-        if view.updated_player:
-            try:
-                await update_player(str(inter.user.id), UpdatePlayerModel(**view.updated_player))
-            except HTTPException as e:
-                logging.info(msg=e)
+        await process_player_update(inter, view) if view.updated_player else 0
 
     @app_commands.command(name='list', description='List all Players')
     async def player_view_all(self, inter: Interaction) -> None:
@@ -49,29 +56,24 @@ class PlayerCommands(commands.GroupCog, name='players'):
         players = [PlayerModel(**player) for player in players]
         view = PlayerCarousel(players)
         await inter.followup.send(embed=PlayerEmbed(players[0]), view=view)
+
         await view.wait()
-        if view.updated_player:
-            try:
-                await update_player(str(inter.user.id), UpdatePlayerModel(**view.updated_player))
-            except HTTPException as e:
-                logging.info(msg=e)
+        await process_player_update(inter, view) if view.updated_player else 0
 
     @app_commands.command(name='me', description='View your own data')
     async def player_me(self, inter: Interaction):
         """ Displays your own player """
-        await inter.response.defer()
+        await inter.response.defer(ephemeral=True)
         try:
             me = await show_player(str(inter.user.id))
             me = PlayerModel(**me)
             me.discord_user = inter.user
             view = OwnPlayerView(me)
-            await inter.followup.send(embed=PlayerEmbed(me), view=view)
+            await inter.followup.send(embed=SelfPlayerEmbed(me), view=view)
+
             await view.wait()
-            if view.updated_player:
-                try:
-                    await update_player(str(inter.user.id), UpdatePlayerModel(**view.updated_player))
-                except HTTPException as e:
-                    logging.info(msg=e)
+            await process_player_update(inter, view) if view.updated_player else 0
+
         except HTTPException as e:
             await inter.followup.send(embed=GenericErrorEmbed(inter.user, e))
 
@@ -89,7 +91,10 @@ class PlayerCommands(commands.GroupCog, name='players'):
         if not players:
             await inter.followup.send(f'No results found')
         else:
-            await inter.followup.send(embed=PlayerEmbed(players[0]), view=PlayerCarousel(players))
+            view = PlayerCarousel(players)
+            await inter.followup.send(embed=PlayerEmbed(players[0]), view=view)
+            await view.wait()
+            await process_player_update(inter, view) if view.updated_player else 0
 
 
 async def setup(bot: commands.Bot):

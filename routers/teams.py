@@ -134,3 +134,13 @@ async def get_team_members(team_id: str):
     player_list = await db_find_some('player_team_link', {'team': team_id}, exclude={'player': 1})
     player_list = [await db_find_one('players', player['player']) for player in player_list]
     return player_list
+
+
+@router.get("/{team_id}/approvals", response_description="List all pending Approvals",
+            response_model=list[PlayerTeamModel], tags=['teams'])
+async def list_pending_approvals(team_id: str):
+    """
+    Lists pending approvals by team
+    """
+    results = await db_find_some("player_team_link", {"team": team_id, "approved": None})
+    return results

@@ -5,14 +5,7 @@ from database import db_find_some
 router = APIRouter(tags=['approvals'])
 
 
-@router.get("/teams/{team_id}/approvals", response_description="List all pending Approvals",
-            response_model=list[PlayerTeamModel], tags=['teams'])
-async def list_pending_approvals(team_id: str):
-    """
-    Lists pending approvals by team
-    """
-    results = await db_find_some("player_team_link", {"team": team_id, "approved": None})
-    return results
+
 
 
 @router.get("/approvals/pending", response_description="List ALL pending Approvals",

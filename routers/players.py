@@ -1,8 +1,9 @@
-from fastapi import APIRouter
-from classes.players import PlayerModel, UpdatePlayerModel
-from classes.teams import TeamModel
-from fastapi import Body, HTTPException, status
+from fastapi import APIRouter, Body, HTTPException, status
 from fastapi.responses import JSONResponse
+
+from classes.players import PlayerModel, UpdatePlayerModel, PlayerEmbed
+from classes.teams import TeamModel
+
 from database import db_find_one_by_other, db_add_one, db_find_all, db_find_one, db_update_one, db_update_one_discord
 
 router = APIRouter(tags=['players'], prefix='/players')
@@ -19,6 +20,7 @@ async def register_player(player: PlayerModel = Body(...)):
     if await db_find_one_by_other('players', {'discord_user': player.discord_id}) is not None:
         raise HTTPException(status_code=406, detail=f"Discord ID is already already Registered")
     created_player = await db_add_one('players', player)
+
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=created_player)
 
 
@@ -37,7 +39,6 @@ async def get_player_team(player_id: str) -> dict:
         raise HTTPException(status_code=404, detail=f'You do not belong to any teams')
     team = await db_find_one('teams', player_link['team'])
     return team
-
 
 
 @router.get("/{player_id}", response_description="Get a single player", response_model=PlayerModel)

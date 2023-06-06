@@ -23,8 +23,8 @@ class AdminCommands(commands.Cog, name='Admin Commands'):
     @app_commands.command(name='purge')
     @commands.check(is_server_owner)
     async def clear_channel(self, inter: Interaction, amount: int = 100):
-        deleted = await inter.channel.purge(limit=amount, reason='Owner Purge', bulk=True)
         await inter.response.defer()
+        deleted = await inter.channel.purge(limit=amount, reason='Owner Purge', bulk=True)
         await inter.followup.send(f'{inter.user.mention} requested `{amount}` messages deleted and `{len(deleted)}` '
                                   f'were actually deleted. **I can only do 100 at a time** \n '
                                   f'If you need more, please re-run the command. ')
