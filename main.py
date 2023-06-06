@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from config import BOT_TOKEN, INTENTS, BOT_PREFIX, BOT_OWNER, cogs
 from discord.ext import commands
 from routers import players, teams, team_join_approvals, admin
+from cogs.players import PlayerRegisterPersistent
 import discord
 import uvicorn
 
@@ -41,6 +42,12 @@ async def on_ready():
     for cog in cogs:
         print(f'cogs.{cog[:-3]}')
         await bot.load_extension(f'cogs.{cog[:-3]}')
+
+
+@bot.event
+async def setup_hook():
+    bot.add_view(PlayerRegisterPersistent())
+
 
 
 @app.on_event('startup')

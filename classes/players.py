@@ -3,8 +3,8 @@ from pydantic import EmailStr, Field
 from typing import Optional, Union, Any
 from classes.base import Base, PyObjectId
 from config import DEFAULT_LOGO
-from discord import Interaction, ButtonStyle
-from discord.ui import Button
+from discord import Interaction, ButtonStyle, Embed
+from discord.ui import Button, View, Modal
 
 
 class PlayerModel(Base):
@@ -76,7 +76,7 @@ class UpdatePlayerTeamModel(Base):
         }
 
 
-class PlayerEmbed(discord.Embed):
+class PlayerEmbed(Embed):
 
     def __init__(self, player: PlayerModel):
         super().__init__(title=player.name, description=f'AKA {player.discord_user.name}')
@@ -100,7 +100,33 @@ class SelfPlayerEmbed(PlayerEmbed):
         self.add_field(name='Offences', value=f'```List Offences Here```')
 
 
-class PlayerUpdateModal(discord.ui.Modal, title='Player update'):
+class PlayerRegisterModal(Modal, title='Register a Player'):
+    game_uid = discord.ui.TextInput(label='UID', custom_id='game_uid', placeholder='Updated UID', required=True)
+    calibrated_height = discord.ui.TextInput(label='Calibrated Height', custom_id='calibrated_height',
+                                             placeholder='New Height', required=True)
+    promo_email = discord.ui.TextInput(label='Promo Email', custom_id='promo_email',
+                                       placeholder='Email for Promos (Optional)', required=False, default=None)
+
+    def __init__(self, view: View):
+        super().__init__()
+        self.view = view
+
+    async def on_submit(self, inter: Interaction) -> None:
+        new_player = {
+            "name": inter.user.name,
+            "discord_id": str(inter.user.id),
+            "game_uid": self.game_uid.value,
+            "calibrated_height": self.calibrated_height.value,
+            "promo_email": self.promo_email.value or None
+        }
+        self.view.updated_player = PlayerModel(**new_player)
+        await inter.response.send_message(f'Registration Sent!', ephemeral=True)
+        self.stop()
+
+    async def on_error(self, inter: discord.Interaction, error: Exception) -> None:
+        await inter.response.send_message(f'Oops! Something went wrong. {error}', ephemeral=True)
+
+class PlayerUpdateModal(Modal, title='Player update'):
     name = discord.ui.TextInput(label='Name', custom_id='name', placeholder='New Name', required=False)
     game_uid = discord.ui.TextInput(label='UID', custom_id='game_uid', placeholder='Updated UID', required=False)
     calibrated_height = discord.ui.TextInput(label='Calibrated Height', custom_id='calibrated_height',
@@ -108,11 +134,11 @@ class PlayerUpdateModal(discord.ui.Modal, title='Player update'):
     promo_email = discord.ui.TextInput(label='Promo Email', custom_id='promo_email',
                                        placeholder='Email for Promos', required=False, )
 
-    def __init__(self, view: discord.ui.View):
+    def __init__(self, view: View):
         super().__init__()
         self.view = view
 
-    async def on_submit(self, inter: discord.Interaction) -> None:
+    async def on_submit(self, inter: Interaction) -> None:
         updated_player = {
             "name": self.name.value or None,
             "game_uid": self.game_uid.value or None,
@@ -133,7 +159,7 @@ class OwnPlayerView(discord.ui.View):
         super().__init__()
         self.player = player
         self.user = player.discord_user
-        self.updated_player = None
+        self.updated_player: Optional[UpdatePlayerModel] = None
 
     @discord.ui.button(label='Update', style=discord.ButtonStyle.blurple)
     async def update(self, inter: Interaction, button: discord.ui.Button):
@@ -207,3 +233,16 @@ class PlayerCarousel(discord.ui.View):
             self.update.disabled = True
         self.counter.label = f'{self.obj_index + 1} of {self.player_count}'
         await inter.response.edit_message(embed=PlayerEmbed(player), view=self)
+
+
+class PlayerRegisterEmbed(Embed):
+    def __init__(self):
+        super().__init__(title="Player Registration", description="Click below to register a player")
+        self.add_field(name='Registrations', value=f'By registering a player, you are agreeing to the VRPL code of '
+                                                   f'conduct and rules')
+        self.add_field(name='Game UID', value=f'You can find the game UID from the options menu. Please have it ready.')
+        self.add_field(name='Calibrated Height', value=f'Please list the height you will be using in this league. '
+                                                       f'You can update it later, but we track all edits to prevent abuse')
+        self.add_field(name='Optionals', value=f'Providing your email is optional, and not required to participate')
+        self.set_image(url='https://i.imgur.com/34eBdG2.png')
+        self.set_thumbnail(url='https://i.imgur.com/VwQoXMB.png')

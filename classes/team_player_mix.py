@@ -159,7 +159,8 @@ class OwnTeamView(View):
         self.team = team
         self.updated_team: Union[UpdateTeamModel, None] = None
 
-    @discord.ui.button(label='Update', style=discord.ButtonStyle.blurple)
+
+    @discord.ui.button(label='Update', style=discord.ButtonStyle.blurple, )
     async def update(self, inter: Interaction, button: Button):
         modal = TeamUpdateModal(view=self)
         await inter.response.send_modal(modal)
@@ -168,7 +169,6 @@ class OwnTeamView(View):
 
     @discord.ui.button(label='View Pending Joins', style=discord.ButtonStyle.green, disabled=True)
     async def approve_joins(self, inter: Interaction, button: Button):
-        #TODO: Disabled based on captain/cocaptain
         self.stop()
 
     @discord.ui.button(label='Remove Player', style=discord.ButtonStyle.danger, disabled=True)
@@ -187,4 +187,8 @@ class OwnTeamView(View):
         if str(inter.user.id) not in _:
             return False
         else:
+            self.update_co_captain.disabled = False
+            self.remove_player.disabled = False
+            self.approve_joins.disabled = False
+            self.update.disabled = False
             return True

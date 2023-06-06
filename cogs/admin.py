@@ -1,6 +1,8 @@
 from discord.ext import commands
 from discord.ext.commands import Context, Greedy
-from discord import Object, HTTPException, app_commands, Interaction
+from discord import Object, HTTPException, app_commands, Interaction, TextChannel, Embed, Permissions
+from classes.players import PlayerRegisterEmbed
+from cogs.players import PlayerRegisterPersistent
 from typing import Optional, Literal
 from routers.admin import drop_db
 
@@ -14,6 +16,15 @@ class AdminCommands(commands.Cog, name='Admin Commands'):
     def __init__(self, bot):
         self.bot = bot
 
+    @app_commands.command(name='player_channel', description='Make this a Player Channel')
+    @commands.is_owner()
+    @app_commands.default_permissions(administrator=True)
+    async def make_player_channel(self, inter: Interaction, channel: TextChannel):
+        """ Defines a Channel for the persistent Embed """
+        await inter.response.send_message(f'Action Complete', ephemeral=True)
+        channel = inter.guild.get_channel(channel.id)
+        await channel.send(embed=PlayerRegisterEmbed(), view=PlayerRegisterPersistent())
+
     @commands.command(name='drop_db')
     @commands.is_owner()
     async def drop_db(self, ctx: Context):
@@ -21,13 +32,12 @@ class AdminCommands(commands.Cog, name='Admin Commands'):
         await ctx.reply(content='Dropped all the DBs, your honor.')
 
     @app_commands.command(name='purge')
+    @app_commands.default_permissions(administrator=True)
     @commands.check(is_server_owner)
     async def clear_channel(self, inter: Interaction, amount: int = 100):
-        await inter.response.defer()
-        deleted = await inter.channel.purge(limit=amount, reason='Owner Purge', bulk=True)
-        await inter.followup.send(f'{inter.user.mention} requested `{amount}` messages deleted and `{len(deleted)}` '
-                                  f'were actually deleted. **I can only do 100 at a time** \n '
-                                  f'If you need more, please re-run the command. ')
+        await inter.response.send_message(f'Purged Channel')
+        await inter.channel.purge(limit=amount, reason='Owner Purge', bulk=True)
+
 
     @commands.command(name='get_ids')
     @commands.is_owner()

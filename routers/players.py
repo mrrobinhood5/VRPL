@@ -17,7 +17,7 @@ async def register_player(player: PlayerModel = Body(...)):
     "discord_id": "DISCORD_ID from the discord API",
     "game_uid": "uid from c$",
     "height": "5ft 6in"``` """
-    if await db_find_one_by_other('players', {'discord_user': player.discord_id}) is not None:
+    if await db_find_one_by_other('players', {'discord_id': player.discord_id}) is not None:
         raise HTTPException(status_code=406, detail=f"Discord ID is already already Registered")
     created_player = await db_add_one('players', player)
 
