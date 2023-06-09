@@ -5,9 +5,6 @@ from database import db_find_some
 router = APIRouter(tags=['approvals'])
 
 
-
-
-
 @router.get("/approvals/pending", response_description="List ALL pending Approvals",
             response_model=list[PlayerTeamModel])
 async def list_all_pending_approvals():

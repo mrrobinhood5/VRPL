@@ -50,24 +50,6 @@ class PlayerCommands(commands.GroupCog, name='players'):
         self.bot = bot
         super().__init__()
 
-    # @app_commands.command(name='register', description='Register as a Player')
-    # async def player_register(self, inter: Interaction, game_uid: str, calibrated_height: str) -> None:
-    #     """ Register a Player """
-    #     await inter.response.defer()
-    #     player = PlayerModel(name=inter.user.name, discord_id=str(inter.user.id), game_uid=game_uid,
-    #                          calibrated_height=calibrated_height)
-    #     try:
-    #         await register_player(player)
-    #     except HTTPException as e:
-    #         await inter.followup.send(embed=GenericErrorEmbed(inter.user, e))
-    #     me = PlayerModel(**await show_player(str(inter.user.id)))
-    #     me.discord_user = inter.user
-    #     view = OwnPlayerView(me)
-    #     await inter.followup.send(content='Registration Complete', embed=PlayerEmbed(me), view=view)
-    #
-    #     await view.wait()
-    #     await process_player_update(inter, view) if view.updated_player else 0
-
     @app_commands.command(name='list', description='List all Players')
     async def player_view_all(self, inter: Interaction) -> None:
         """ Views all Players """

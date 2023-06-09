@@ -2,9 +2,8 @@ from pydantic import HttpUrl, Field
 from classes.base import Base, PyObjectId
 from classes.players import PlayerModel
 
-
 from typing import Optional, Union
-from discord.ui import  Modal, View, Select
+from discord.ui import Modal, View, Select
 from discord import Embed, Interaction, SelectOption
 
 import discord
@@ -49,12 +48,13 @@ class UpdateTeamModel(Base):
         }
 
 
-
 # TODO inherit both TeamRegisterModal and PlayerRegisterModal
 class TeamRegisterModal(Modal, title='Register a Team'):
     team_name = discord.ui.TextInput(label='Team Name', custom_id='name', placeholder='New Team Name', required=True)
-    team_motto = discord.ui.TextInput(label='Team Motto', custom_id='team_motto', placeholder='Team Motto', required=True)
-    team_logo = discord.ui.TextInput(label='Team Logo URL', custom_id='team_logo', placeholder='URL for Team Image', required=False, default=None)
+    team_motto = discord.ui.TextInput(label='Team Motto', custom_id='team_motto', placeholder='Team Motto',
+                                      required=True)
+    team_logo = discord.ui.TextInput(label='Team Logo URL', custom_id='team_logo', placeholder='URL for Team Image',
+                                     required=False, default=None)
 
     def __init__(self, view: View, captain: PlayerModel):
         super().__init__()
@@ -75,25 +75,28 @@ class TeamRegisterModal(Modal, title='Register a Team'):
     async def on_error(self, inter: discord.Interaction, error: Exception) -> None:
         await inter.response.send_message(f'Oops! Something went wrong. {error}', ephemeral=True)
 
+
 class TeamRegisterEmbed(Embed):
     def __init__(self):
         super().__init__(title="Team Registration", description="Click below to register a team")
-        self.add_field(name='Registrations', value=f'By registering a team, you are opening up sign-ups for your team. Only a Captain / Co-Captain can approved the team join requests')
+        self.add_field(name='Registrations',
+                       value=f'By registering a team, you are opening up sign-ups for your team. Only a Captain / Co-Captain can approved the team join requests')
         self.add_field(name='Team Name', value=f'You will be submitting the proper name for your team')
         self.add_field(name='Team Motto', value=f'This will be the text used to describe your team. ')
         self.add_field(name='Team Logo', value=f'You can use an imgur link or a discord link to provide the team URL')
         self.set_image(url='https://i.imgur.com/34eBdG2.png')
         self.set_thumbnail(url='https://i.imgur.com/VwQoXMB.png')
 
+
 class TeamChooseDropdown(Select):
     def __init__(self, options=list[SelectOption]):
-        # options = [SelectOption(label='test option', value='0', description='test desc')]
         super().__init__(placeholder='Choose a Team', min_values=1, max_values=1, options=options)
 
     async def callback(self, inter: Interaction):
         self.view.team_value = self.values[0].split(':')
         await inter.response.send_message(f'`{inter.user.name}` has requested to join `{self.view.team_value[1]}`')
         self.view.stop()
+
 
 class TeamChooseView(View):
     def __init__(self, options: list[SelectOption]):

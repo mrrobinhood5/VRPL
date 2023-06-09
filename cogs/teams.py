@@ -4,12 +4,12 @@ from discord.ui import View, button, Button
 
 from fastapi.exceptions import HTTPException
 
-from routers.teams import register_team, list_teams, get_team_members, update_team
+from routers.teams import register_team, list_teams, get_team_members, update_team, request_to_join_team
 from routers.players import show_player, get_player_team
 
 from classes.teams import TeamModel, UpdateTeamModel, TeamRegisterModal, TeamChooseView
 from classes.team_player_mix import FullTeamModel, FullTeamEmbed, TeamCarousel, OwnTeamView, OwnTeamEmbed, NewTeamEmbed
-from classes.players import PlayerModel
+from classes.players import PlayerModel, PlayerTeamModel
 
 from classes.errors import GenericErrorEmbed
 from typing import Optional
@@ -38,7 +38,6 @@ class TeamRegisterPersistent(View):
         channel = inter.channel.id
         try:
             await register_team(self.updated_team)
-            # self.updated_team.discord_user = inter.user
             self.updated_team = await build_full_team(self.updated_team)
             await inter.client.get_channel(channel).send(content="**New Team Registered**",
                                                          embed=NewTeamEmbed(self.updated_team))
@@ -47,14 +46,27 @@ class TeamRegisterPersistent(View):
 
     @button(label="Join a Team", style=ButtonStyle.blurple, custom_id='team:join')
     async def join(self, inter: Interaction, button: Button):
-        teams = await list_teams()
-        teams = [TeamModel(**team) for team in teams]
-        options = [SelectOption(label=team.name, value=f'{str(team.id)}:{team.name}', description=team.team_motto)
-                   for team in teams if team.active]
-        view = TeamChooseView(options=options)
-        await inter.response.send_message(content='Where do you want to send your request?', view=view, ephemeral=True)
-        await view.wait()
-        # send the api call to make a team request here
+        try:  # check to see if you are registered
+            player = await show_player(str(inter.user.id))
+        except HTTPException as e:
+            await inter.response.channel.send(embed=GenericErrorEmbed(inter.user, e))
+        else:
+            try:  # check to see if this player does not already belong to a team
+                player_team = await get_player_team(str(inter.user.id))
+            except HTTPException as e:  # doesn't belong to team
+                teams = await list_teams()
+                teams = [TeamModel(**team) for team in teams]
+                options = [SelectOption(label=team.name, value=f'{str(team.id)}:{team.name}', description=team.team_motto)
+                           for team in teams if team.active]
+                view = TeamChooseView(options=options)
+                await inter.response.send_message(content='Where do you want to send your request?', view=view, ephemeral=True)
+                await view.wait()
+                try:
+                    await request_to_join_team(view.team_value[0], PlayerTeamModel(**{"player": player['_id']}))
+                except HTTPException as e:  # will error out if a similar request has been submitted
+                    inter.channel.send(embed=GenericErrorEmbed(inter.user, e))
+            else:  # player already belongs to team
+                await inter.response.send_message(content=f'You already belong to {player_team["name"]}', ephemeral=True)
 
 
 async def build_full_team(team: TeamModel) -> FullTeamModel:
@@ -88,27 +100,6 @@ class TeamCommands(commands.GroupCog, name='teams'):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         super().__init__()
-
-    # TODO: does this become obsolete if using single embed?
-    # @app_commands.command(name='register', description='Register a team')
-    # async def team_register(self, inter: Interaction, name: str, motto: str, logo: str = None):
-    #     """ Register a team """
-    #     await inter.response.defer()
-    #
-    #     try:
-    #         captain = await show_player(str(inter.user.id))
-    #     except HTTPException as e:
-    #         await inter.followup.send(embed=GenericErrorEmbed(inter.user, e))
-    #
-    #     team = TeamModel(name=name, team_motto=motto, team_logo=logo, captain=captain['_id'])
-    #
-    #     try:
-    #         team = await register_team(team)
-    #     except HTTPException as e:
-    #         await inter.followup.send(embed=GenericErrorEmbed(inter.user, e))
-    #     else:
-    #         created_team = json.loads(team.body.decode())
-    #         await inter.followup.send(content='Registration Complete', embed=NewTeamEmbed(created_team))
 
     @app_commands.command(name='list', description='List all teams')
     async def teams_view_all(self, inter: Interaction):
@@ -161,21 +152,6 @@ class TeamCommands(commands.GroupCog, name='teams'):
 
         await view.wait()
         await process_team_update(inter, str(view.team.id), view.updated_team) if view.updated_team else 0
-
-    # todo: this will probably be replaced by the persistent view
-    # @app_commands.command(name='join', description='Request to Join a Team')
-    # async def join_team(self, inter: Interaction):
-    #     """ Request to join a team """
-    #
-    #     # await inter.response.defer(ephemeral=True)
-    #
-    #
-    #     team_join = TeamJoinModal()
-    #     team_join.add_item(dropdown)
-    #     await inter.response.send_modal(team_join) # TODO: I left of here, cannot send a dropdown in a modal, needs a view
-    #     await team_join.wait()
-    #     await inter.followup.send(f'Request Sent')
-    # check if User is registered
 
 
 async def setup(bot: commands.Bot):
