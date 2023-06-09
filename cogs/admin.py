@@ -2,7 +2,9 @@ from discord.ext import commands
 from discord.ext.commands import Context, Greedy
 from discord import Object, HTTPException, app_commands, Interaction, TextChannel, Embed, Permissions
 from classes.players import PlayerRegisterEmbed
+from classes.teams import TeamRegisterEmbed
 from cogs.players import PlayerRegisterPersistent
+from cogs.teams import TeamRegisterPersistent
 from typing import Optional, Literal
 from routers.admin import drop_db
 
@@ -24,6 +26,15 @@ class AdminCommands(commands.Cog, name='Admin Commands'):
         await inter.response.send_message(f'Action Complete', ephemeral=True)
         channel = inter.guild.get_channel(channel.id)
         await channel.send(embed=PlayerRegisterEmbed(), view=PlayerRegisterPersistent())
+
+    @app_commands.command(name='team_channel', description='Make this a Teams Channel')
+    @commands.is_owner()
+    @app_commands.default_permissions(administrator=True)
+    async def make_teams_channel(self, inter: Interaction, channel: TextChannel):
+        """ Defines a Channel for the persistent Embed """
+        await inter.response.send_message(f'Action Complete', ephemeral=True)
+        channel = inter.guild.get_channel(channel.id)
+        await channel.send(embed=TeamRegisterEmbed(), view=TeamRegisterPersistent())
 
     @commands.command(name='drop_db')
     @commands.is_owner()

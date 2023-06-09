@@ -5,6 +5,7 @@ from config import BOT_TOKEN, INTENTS, BOT_PREFIX, BOT_OWNER, cogs
 from discord.ext import commands
 from routers import players, teams, team_join_approvals, admin
 from cogs.players import PlayerRegisterPersistent
+from cogs.teams import TeamRegisterPersistent
 import discord
 import uvicorn
 
@@ -12,6 +13,7 @@ import uvicorn
 app = FastAPI()
 bot = commands.Bot(command_prefix=BOT_PREFIX, description='VRPL Team Manager', intents=INTENTS)
 bot.owner_id = int(BOT_OWNER)
+
 discord.utils.setup_logging()
 
 app.include_router(players.router)
@@ -47,7 +49,7 @@ async def on_ready():
 @bot.event
 async def setup_hook():
     bot.add_view(PlayerRegisterPersistent())
-
+    bot.add_view(TeamRegisterPersistent())
 
 
 @app.on_event('startup')
@@ -58,4 +60,3 @@ async def run_bot():
 if __name__ == "__main__":
     uvicorn.run("main:app", host='0.0.0.0', port=8080, reload=False)
 
-#TODO: Add the log channels so that bot updates the 'keep' records

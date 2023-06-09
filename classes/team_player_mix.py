@@ -1,10 +1,10 @@
 import discord
-from discord.ui import View, button, Button
-from discord import Interaction
+from discord.ui import View, button, Button, TextInput, Modal
+from discord import Interaction, Embed
 
 from typing import Optional, Union
 
-from classes.teams import TeamModel, TeamUpdateModal, UpdateTeamModel
+from classes.teams import TeamModel, UpdateTeamModel
 
 from classes.players import PlayerModel
 
@@ -192,3 +192,36 @@ class OwnTeamView(View):
             self.approve_joins.disabled = False
             self.update.disabled = False
             return True
+
+class NewTeamEmbed(Embed):
+
+    def __init__(self, team: FullTeamModel):
+        super().__init__(title=team.name, description=team.team_motto)
+        self.color = discord.Color.blurple()
+        self.set_thumbnail(url=team.team_logo or "https://cdn.discordapp.com/emojis/1058108114626416721.webp?size=96&quality=lossless")
+        self.set_footer(text=f'Active: {team.active}')
+        self.add_field(name='MMR', value=f'```{team.team_mmr}```', inline=True)
+        self.add_field(name='Captain', value=f'```{team.captain.name}```')
+
+
+class TeamUpdateModal(Modal, title='Team Update'):
+    name = TextInput(label='Name', custom_id='name', placeholder='New Name', required=False)
+    motto = TextInput(label='Team Motto', custom_id='team_motto', placeholder='New Team Motto', required=False)
+    logo = TextInput(label='Team Logo', custom_id='team_logo', placeholder='New Team Logo', required=False)
+
+    def __init__(self, view: View) -> None:
+        super().__init__()
+        self.view = view
+
+    async def on_submit(self, inter: Interaction) -> None:
+        updated_team = {
+            "name": self.name.value or None,
+            "team_motto": self.motto.value or None,
+            "team_logo": self.logo.value or None,
+        }
+        self.view.updated_team = UpdateTeamModel(**updated_team)
+        await inter.response.send_message(f'Updates have been sent')
+        self.stop()
+
+    async def on_error(self, inter: Interaction, error: Exception) -> None:
+        await inter.response.send_message('Oops! Something went wrong', ephemeral=True)

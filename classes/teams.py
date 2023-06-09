@@ -1,5 +1,7 @@
 from pydantic import HttpUrl, Field
 from classes.base import Base, PyObjectId
+from classes.players import PlayerModel
+
 
 from typing import Optional, Union
 from discord.ui import TextInput, Modal, Button, View
@@ -47,36 +49,39 @@ class UpdateTeamModel(Base):
         }
 
 
-class NewTeamEmbed(Embed):
 
-    def __init__(self, inter: Interaction, team: dict):
-        super().__init__(title=team['name'], description=team['team_motto'])
-        self.color = discord.Color.blurple()
-        self.set_thumbnail(url=team.get('team_logo', "https://cdn.discordapp.com/emojis/1058108114626416721.webp?size=96&quality=lossless"))
-        self.set_footer(text=f'Active: {team.get("active")}')
-        self.add_field(name='MMR', value=f'```{team.get("team_mmr")}```', inline=True)
-        self.add_field(name='Captain', value=f'```{inter.user.name}```')
+# TODO inherit both TeamRegisterModal and PlayerRegisterModal
+class TeamRegisterModal(Modal, title='Register a Team'):
+    team_name = discord.ui.TextInput(label='Team Name', custom_id='name', placeholder='New Team Name', required=True)
+    team_motto = discord.ui.TextInput(label='Team Motto', custom_id='team_motto', placeholder='Team Motto', required=True)
+    team_logo = discord.ui.TextInput(label='Team Logo URL', custom_id='team_logo', placeholder='URL for Team Image', required=False, default=None)
 
-
-class TeamUpdateModal(Modal, title='Team Update'):
-    name = TextInput(label='Name', custom_id='name', placeholder='New Name', required=False)
-    motto = TextInput(label='Team Motto', custom_id='team_motto', placeholder='New Team Motto', required=False)
-    logo = TextInput(label='Team Logo', custom_id='team_logo', placeholder='New Team Logo', required=False)
-
-    def __init__(self, view: View) -> None:
+    def __init__(self, view: View, captain: PlayerModel):
         super().__init__()
         self.view = view
+        self.captain = captain
 
     async def on_submit(self, inter: Interaction) -> None:
-        updated_team = {
-            "name": self.name.value or None,
-            "team_motto": self.motto.value or None,
-            "team_logo": self.logo.value or None,
+        new_team = {
+            "name": self.team_name.value,
+            "team_motto": self.team_motto.value,
+            "team_logo": self.team_logo.value or None,
+            "captain": str(self.captain.id)
         }
-        self.view.updated_team = UpdateTeamModel(**updated_team)
-        await inter.response.send_message(f'Updates have been sent')
+        self.view.updated_team = TeamModel(**new_team)
+        await inter.response.send_message(f'Registration Sent!', ephemeral=True)
         self.stop()
 
-    async def on_error(self, inter: Interaction, error: Exception) -> None:
-        await inter.response.send_message('Oops! Something went wrong', ephemeral=True)
+    async def on_error(self, inter: discord.Interaction, error: Exception) -> None:
+        await inter.response.send_message(f'Oops! Something went wrong. {error}', ephemeral=True)
+
+class TeamRegisterEmbed(Embed):
+    def __init__(self):
+        super().__init__(title="Team Registration", description="Click below to register a team")
+        self.add_field(name='Registrations', value=f'By registering a team, you are opening up sign-ups for your team. Only a Captain / Co-Captain can approved the team join requests')
+        self.add_field(name='Team Name', value=f'You will be submitting the proper name for your team')
+        self.add_field(name='Team Motto', value=f'This will be the text used to describe your team. ')
+        self.add_field(name='Team Logo', value=f'You can use an imgur link or a discord link to provide the team URL')
+        self.set_image(url='https://i.imgur.com/34eBdG2.png')
+        self.set_thumbnail(url='https://i.imgur.com/VwQoXMB.png')
 

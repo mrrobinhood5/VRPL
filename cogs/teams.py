@@ -1,18 +1,45 @@
 from discord.ext import commands
-from discord import app_commands
-from discord import Interaction
+from discord import app_commands, Interaction, ButtonStyle, SelectOption
+from discord.ui import View, button, Button, Select
+
 
 from fastapi.exceptions import HTTPException
 
 from routers.teams import register_team, list_teams, get_team_members, update_team
 from routers.players import show_player, get_player_team
 
-from classes.teams import TeamModel, NewTeamEmbed, UpdateTeamModel
-from classes.team_player_mix import FullTeamModel, FullTeamEmbed, TeamCarousel, OwnTeamView, OwnTeamEmbed
+from classes.teams import TeamModel, UpdateTeamModel, TeamRegisterModal, TeamJoinModal
+from classes.team_player_mix import FullTeamModel, FullTeamEmbed, TeamCarousel, OwnTeamView, OwnTeamEmbed, NewTeamEmbed
 from classes.players import PlayerModel
 
 from classes.errors import GenericErrorEmbed
 import json
+
+
+class TeamRegisterPersistent(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.updated_team: TeamModel = None
+
+    @button(label='Register a Team', style=ButtonStyle.green, custom_id='team:register')
+    async def register(self, inter: Interaction, button: Button):
+        captain = await show_player(str(inter.user.id))
+        modal = TeamRegisterModal(view=self, captain=PlayerModel(**captain))
+        await inter.response.send_modal(modal)
+        await modal.wait()
+
+        channel = inter.channel.id
+        try:
+            await register_team(self.updated_team)
+            # self.updated_team.discord_user = inter.user
+            self.updated_team = await build_full_team(self.updated_team)
+            await inter.client.get_channel(channel).send(embed=NewTeamEmbed(self.updated_team))
+        except HTTPException as e:
+            await inter.client.get_channel(channel).send(embed=GenericErrorEmbed(inter.user, e), delete_after=10)
+
+class TeamChooseDropdown(Select):
+    def __init__(self):
+        super().__init__(placeholder='Choose a Team', min_values=1, max_values=1)
 
 
 async def build_full_team(team: TeamModel) -> FullTeamModel:
@@ -45,6 +72,8 @@ class TeamCommands(commands.GroupCog, name='teams'):
         self.bot = bot
         super().__init__()
 
+
+    #TODO: does this become obsolete if using single embed?
     @app_commands.command(name='register', description='Register a team')
     async def team_register(self, inter: Interaction, name: str, motto: str, logo: str = None):
         """ Register a team """
@@ -116,6 +145,25 @@ class TeamCommands(commands.GroupCog, name='teams'):
 
         await view.wait()
         await process_team_update(inter, str(view.team.id), view.updated_team) if view.updated_team else 0
+
+    @app_commands.command(name='join', description='Request to Join a Team')
+    async def join_team(self, inter: Interaction):
+        """ Request to join a team """
+
+        # await inter.response.defer(ephemeral=True)
+        dropdown = TeamChooseDropdown()
+        teams = await list_teams()
+        teams = [TeamModel(**team) for team in teams]
+        for team in teams:
+            if team.active:
+                dropdown.append_option(SelectOption(label=team.name, value=str(team.id), description=team.team_motto))
+
+        team_join = TeamJoinModal()
+        team_join.add_item(dropdown)
+        await inter.response.send_modal(team_join) # TODO: I left of here, cannot send a dropdown in a modal, needs a view
+        await team_join.wait()
+        await inter.followup.send(f'Request Sent')
+        # check if User is registered
 
 
 async def setup(bot: commands.Bot):

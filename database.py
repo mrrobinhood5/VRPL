@@ -1,9 +1,11 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from pymongo import DESCENDING
 from fastapi.encoders import jsonable_encoder
 from typing import Union
 from classes.players import PlayerModel, PlayerTeamModel
 from classes.teams import TeamModel
 from os import getenv
+
 
 db_user = getenv('DB_USER')
 db_pw = getenv('DB_PW')
@@ -11,6 +13,15 @@ db_pw = getenv('DB_PW')
 client = AsyncIOMotorClient(f"mongodb+srv://{db_user}:{db_pw}@cluster0.i31qn.mongodb.net/?retryWrites=true&w=majority")
 db: AsyncIOMotorDatabase = client['VRPL']
 
+
+async def db_get_settings() -> dict:
+    settings = db['settings'].find_one({}, sort=[('_id', DESCENDING)])
+    return settings
+
+
+async def db_set_settings(obj: dict):
+    result = await db['settings'].insert_one(obj)
+    return result
 
 async def db_add_one(db_name: str, obj: Union[PlayerModel, TeamModel, PlayerTeamModel]):
     obj = jsonable_encoder(obj)
@@ -60,7 +71,7 @@ async def db_delete_one(db_name: str, obj_id: str):
     result = await db[db_name].delete_one({'_id': obj_id})
     return result
 
-
+# TODO: get rid of this one?
 async def db_get_full_team(team_id: str = None):
     pipeline = [
         {

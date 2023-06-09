@@ -4,7 +4,7 @@ from typing import Union
 
 import discord
 from discord.ext import commands
-from discord.ui import View, Button
+from discord.ui import View, Button, button
 from discord import app_commands, Interaction, Embed
 
 from routers.players import register_player, list_players, show_player, update_player
@@ -19,7 +19,7 @@ class PlayerRegisterPersistent(View):
         super().__init__(timeout=None)
         self.updated_player: PlayerModel = None
 
-    @discord.ui.button(label='Register a Player', style=discord.ButtonStyle.green, custom_id='player:register')
+    @button(label='Register a Player', style=discord.ButtonStyle.green, custom_id='player:register')
     async def register(self, inter: Interaction, button: Button):
         modal = PlayerRegisterModal(view=self)
         await inter.response.send_modal(modal)
