@@ -8,7 +8,7 @@ from fastapi.exceptions import HTTPException
 from routers.teams import register_team, list_teams, get_team_members, update_team
 from routers.players import show_player, get_player_team
 
-from classes.teams import TeamModel, UpdateTeamModel, TeamRegisterModal, TeamJoinModal
+from classes.teams import TeamModel, UpdateTeamModel, TeamRegisterModal
 from classes.team_player_mix import FullTeamModel, FullTeamEmbed, TeamCarousel, OwnTeamView, OwnTeamEmbed, NewTeamEmbed
 from classes.players import PlayerModel
 
@@ -23,7 +23,12 @@ class TeamRegisterPersistent(View):
 
     @button(label='Register a Team', style=ButtonStyle.green, custom_id='team:register')
     async def register(self, inter: Interaction, button: Button):
-        captain = await show_player(str(inter.user.id))
+        try:
+            captain = await show_player(str(inter.user.id))
+        except HTTPException as e:
+            channel = inter.channel
+            await inter.client.get_channel(channel).send(embed=GenericErrorEmbed(inter.user, e), delete_after=10)
+
         modal = TeamRegisterModal(view=self, captain=PlayerModel(**captain))
         await inter.response.send_modal(modal)
         await modal.wait()
