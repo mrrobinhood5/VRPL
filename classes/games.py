@@ -1,3 +1,4 @@
+# OBSOLETE: LEFT OVER FROM LAST VERSION
 @dataclass
 class Tournament(Base):
     description: str

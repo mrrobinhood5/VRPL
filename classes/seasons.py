@@ -1,3 +1,4 @@
+# OBSOLETE: LEFT OVER FROM LAST VERSION
 @dataclass
 class Season(Base):
     start_date: Union[datetime, str] = datetime.today()

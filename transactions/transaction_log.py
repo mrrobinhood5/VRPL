@@ -1,3 +1,4 @@
+# OBSOLETE, LEFT OVER FROM LAST VERSION
 from dataclasses import dataclass, field
 from typing import Any, Optional
 from bson.objectid import ObjectId

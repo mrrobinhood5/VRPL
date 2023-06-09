@@ -1,4 +1,5 @@
-from dataclasses import dataclass, field
+# OBSOLETE LEFT OBER FROM LAST VERSION
+aclasses import dataclass, field
 from classes.base_classes import Base, Player, Team, Tournament
 from datetime import datetime
 from typing import Union

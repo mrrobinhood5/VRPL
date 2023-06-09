@@ -1,3 +1,4 @@
+# OBSOLETE, LEFT OVER FROM LAST VERSION
 import random
 
 from classes.base_classes import Player, Tournament, Game, Season
