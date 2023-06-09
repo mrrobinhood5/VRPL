@@ -9,9 +9,10 @@ from os import getenv
 
 db_user = getenv('DB_USER')
 db_pw = getenv('DB_PW')
+db_name = getenv('DB_NAME')
 
 client = AsyncIOMotorClient(f"mongodb+srv://{db_user}:{db_pw}@cluster0.i31qn.mongodb.net/?retryWrites=true&w=majority")
-db: AsyncIOMotorDatabase = client['VRPL']
+db: AsyncIOMotorDatabase = client[db_name]
 
 
 async def db_get_settings() -> dict:
