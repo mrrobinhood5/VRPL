@@ -4,8 +4,8 @@ from classes.players import PlayerModel
 
 
 from typing import Optional, Union
-from discord.ui import TextInput, Modal, Button, View
-from discord import Embed, Interaction
+from discord.ui import  Modal, View, Select
+from discord import Embed, Interaction, SelectOption
 
 import discord
 
@@ -85,3 +85,18 @@ class TeamRegisterEmbed(Embed):
         self.set_image(url='https://i.imgur.com/34eBdG2.png')
         self.set_thumbnail(url='https://i.imgur.com/VwQoXMB.png')
 
+class TeamChooseDropdown(Select):
+    def __init__(self, options=list[SelectOption]):
+        # options = [SelectOption(label='test option', value='0', description='test desc')]
+        super().__init__(placeholder='Choose a Team', min_values=1, max_values=1, options=options)
+
+    async def callback(self, inter: Interaction):
+        self.view.team_value = self.values[0].split(':')
+        await inter.response.send_message(f'`{inter.user.name}` has requested to join `{self.view.team_value[1]}`')
+        self.view.stop()
+
+class TeamChooseView(View):
+    def __init__(self, options: list[SelectOption]):
+        super().__init__()
+        self.add_item(TeamChooseDropdown(options=options))
+        self.team_value = None

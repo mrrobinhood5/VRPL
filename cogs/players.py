@@ -15,6 +15,7 @@ from classes.errors import GenericErrorEmbed
 from fastapi.exceptions import HTTPException
 
 class PlayerRegisterPersistent(View):
+    """ This is the View that will be used for Player Registrations """
     def __init__(self):
         super().__init__(timeout=None)
         self.updated_player: PlayerModel = None
@@ -29,12 +30,13 @@ class PlayerRegisterPersistent(View):
         try:
             await register_player(self.updated_player)
             self.updated_player.discord_user = inter.user
-            await inter.client.get_channel(channel).send(embed=PlayerEmbed(self.updated_player))
+            await inter.client.get_channel(channel).send(content="**Player Registration**", embed=PlayerEmbed(self.updated_player))
         except HTTPException as e:
             await inter.client.get_channel(channel).send(embed=GenericErrorEmbed(inter.user, e), delete_after=10)
 
 
 async def process_player_update(inter: Interaction, player: UpdatePlayerModel):
+    """ Helper function to process any player updates """
     try:
         await update_player(str(inter.user.id), player)
     except HTTPException as e:
@@ -68,7 +70,7 @@ class PlayerCommands(commands.GroupCog, name='players'):
 
     @app_commands.command(name='list', description='List all Players')
     async def player_view_all(self, inter: Interaction) -> None:
-        """Views all Players"""
+        """ Views all Players """
         await inter.response.defer(ephemeral=True)
         players = await list_players()
         for player in players:
