@@ -1,6 +1,6 @@
 from pydantic import HttpUrl, Field
-from classes.base import Base, PyObjectId
-from classes.players import PlayerModel
+from models.base import Base, PyObjectId
+from models.players import PlayerModel
 
 from typing import Optional, Union
 from discord.ui import Modal, View, Select

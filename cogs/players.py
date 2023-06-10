@@ -1,38 +1,13 @@
-import logging
-
-from typing import Union
-
-import discord
-from discord.ext import commands
-from discord.ui import View, Button, button
-from discord import app_commands, Interaction, Embed
-
-from routers.players import register_player, list_players, show_player, update_player
-from classes.players import PlayerModel, UpdatePlayerModel, PlayerEmbed, PlayerCarousel, OwnPlayerView, SelfPlayerEmbed
-from classes.players import PlayerRegisterModal
-from classes.errors import GenericErrorEmbed
-
 from fastapi.exceptions import HTTPException
 
-class PlayerRegisterPersistent(View):
-    """ This is the View that will be used for Player Registrations """
-    def __init__(self):
-        super().__init__(timeout=None)
-        self.updated_player: PlayerModel = None
+from discord.ext import commands
+from discord import app_commands, Interaction
 
-    @button(label='Register a Player', style=discord.ButtonStyle.green, custom_id='player:register')
-    async def register(self, inter: Interaction, button: Button):
-        modal = PlayerRegisterModal(view=self)
-        await inter.response.send_modal(modal)
-        await modal.wait()
-
-        channel = inter.channel.id
-        try:
-            await register_player(self.updated_player)
-            self.updated_player.discord_user = inter.user
-            await inter.client.get_channel(channel).send(content="**Player Registration**", embed=PlayerEmbed(self.updated_player))
-        except HTTPException as e:
-            await inter.client.get_channel(channel).send(embed=GenericErrorEmbed(inter.user, e), delete_after=10)
+from embeds.players import PlayerEmbed, SelfPlayerEmbed
+from routers.players import list_players, show_player, update_player
+from models.players import PlayerModel, UpdatePlayerModel
+from models.errors import GenericErrorEmbed
+from views.players import PlayerCarousel, OwnPlayerView
 
 
 async def process_player_update(inter: Interaction, player: UpdatePlayerModel):
@@ -78,6 +53,7 @@ class PlayerCommands(commands.GroupCog, name='players'):
 
             await view.wait()
             await process_player_update(inter, view.updated_player) if view.updated_player else 0
+            #TODO: post the updates to player in the player channel
 
         except HTTPException as e:
             await inter.followup.send(embed=GenericErrorEmbed(inter.user, e))

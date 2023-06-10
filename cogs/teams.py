@@ -7,11 +7,11 @@ from fastapi.exceptions import HTTPException
 from routers.teams import register_team, list_teams, get_team_members, update_team, request_to_join_team
 from routers.players import show_player, get_player_team
 
-from classes.teams import TeamModel, UpdateTeamModel, TeamRegisterModal, TeamChooseView
-from classes.team_player_mix import FullTeamModel, FullTeamEmbed, TeamCarousel, OwnTeamView, OwnTeamEmbed, NewTeamEmbed
-from classes.players import PlayerModel, PlayerTeamModel
+from models.teams import TeamModel, UpdateTeamModel, TeamRegisterModal, TeamChooseView
+from models.team_player_mix import FullTeamModel, FullTeamEmbed, TeamCarousel, OwnTeamView, OwnTeamEmbed, NewTeamEmbed
+from models.players import PlayerModel, PlayerTeamModel
 
-from classes.errors import GenericErrorEmbed
+from models.errors import GenericErrorEmbed
 from typing import Optional
 
 import json

@@ -4,8 +4,10 @@ from fastapi import FastAPI
 from config import BOT_TOKEN, INTENTS, BOT_PREFIX, BOT_OWNER, cogs
 from discord.ext import commands
 from routers import players, teams, team_join_approvals, admin
-from cogs.players import PlayerRegisterPersistent
+from views.players import PlayerRegisterPersistent
 from cogs.teams import TeamRegisterPersistent
+from models.settings import SettingsModel
+
 import discord
 import uvicorn
 
@@ -44,6 +46,10 @@ async def on_ready():
     for cog in cogs:
         print(f'cogs.{cog[:-3]}')
         await bot.load_extension(f'cogs.{cog[:-3]}')
+    # LOAD DB SETTINGS HERE
+    server_config = await admin.get_settings()
+    bot.server_config = SettingsModel(**server_config)
+
 
 
 @bot.event

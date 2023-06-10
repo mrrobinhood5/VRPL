@@ -10,23 +10,3 @@ class GenericErrorEmbed(discord.Embed):
         self.color = discord.Color.brand_red()
         self.set_footer(icon_url="https://cdn.discordapp.com/emojis/1033805413138845736.webp?size=96&quality=lossless",
                         text="Error Message")
-
-
-class TournamentError(Exception):
-    pass
-
-class TeamError(Exception):
-    pass
-
-class PlayerError(Exception):
-    pass
-
-class DivisionError(Exception):
-    pass
-
-class MatchError(Exception):
-    pass
-
-class BaseError(Exception):
-    pass
-# TODO error calls need to be logged with the logger

@@ -4,9 +4,9 @@ from discord import Interaction, Embed
 
 from typing import Optional, Union
 
-from classes.teams import TeamModel, UpdateTeamModel
+from models.teams import TeamModel, UpdateTeamModel
 
-from classes.players import PlayerModel
+from models.players import PlayerModel
 
 from config import DEFAULT_LOGO
 

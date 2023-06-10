@@ -1,12 +1,15 @@
+from typing import Optional, Literal
+
 from discord.ext import commands
 from discord.ext.commands import Context, Greedy
-from discord import Object, HTTPException, app_commands, Interaction, TextChannel, Embed, Permissions
-from classes.players import PlayerRegisterEmbed
-from classes.teams import TeamRegisterEmbed
-from cogs.players import PlayerRegisterPersistent
+from discord import Object, HTTPException, app_commands, Interaction, TextChannel
+
+from embeds.players import PlayerRegisterEmbed
+from models.teams import TeamRegisterEmbed
 from cogs.teams import TeamRegisterPersistent
-from typing import Optional, Literal
-from routers.admin import drop_db
+from routers.admin import drop_db, set_settings
+from views.players import PlayerRegisterPersistent
+from models.settings import SettingsModel
 
 
 async def is_server_owner(ctx):
@@ -18,23 +21,23 @@ class AdminCommands(commands.Cog, name='Admin Commands'):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name='player_channel', description='Make this a Player Channel')
+    @app_commands.command(name='config', description='set default channels')
     @commands.is_owner()
     @app_commands.default_permissions(administrator=True)
-    async def make_player_channel(self, inter: Interaction, channel: TextChannel):
+    async def config_channels(self, inter: Interaction, channel: Literal['Player', 'Team'], select: TextChannel):
         """ Defines a Channel for the persistent Embed """
-        await inter.response.send_message(f'Action Complete', ephemeral=True)
-        channel = inter.guild.get_channel(channel.id)
-        await channel.send(embed=PlayerRegisterEmbed(), view=PlayerRegisterPersistent())
+        await inter.response.send_message(f'Request Sent', ephemeral=True)
 
-    @app_commands.command(name='team_channel', description='Make this a Teams Channel')
-    @commands.is_owner()
-    @app_commands.default_permissions(administrator=True)
-    async def make_teams_channel(self, inter: Interaction, channel: TextChannel):
-        """ Defines a Channel for the persistent Embed """
-        await inter.response.send_message(f'Action Complete', ephemeral=True)
-        channel = inter.guild.get_channel(channel.id)
-        await channel.send(embed=TeamRegisterEmbed(), view=TeamRegisterPersistent())
+        settings: SettingsModel = inter.client.server_config
+        _ = inter.client.get_channel(select.id)
+
+        if channel == 'Player':
+            settings.players_channel = select.id
+            await _.send(embed=PlayerRegisterEmbed(), view=PlayerRegisterPersistent())
+        else:
+            settings.teams_channel = select.id
+            await _.send(embed=TeamRegisterEmbed(), view=TeamRegisterPersistent())
+        await set_settings(settings)
 
     @commands.command(name='drop_db')
     @commands.is_owner()
@@ -48,7 +51,6 @@ class AdminCommands(commands.Cog, name='Admin Commands'):
     async def clear_channel(self, inter: Interaction, amount: int = 100):
         await inter.response.send_message(f'Purged Channel')
         await inter.channel.purge(limit=amount, reason='Owner Purge', bulk=True)
-
 
     @commands.command(name='get_ids')
     @commands.is_owner()

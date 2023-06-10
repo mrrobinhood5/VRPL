@@ -1,8 +1,8 @@
 # OBSOLETE, LEFT OVER FROM LAST VERSION
 import random
 
-from classes.base_classes import Player, Tournament, Game, Season
-from classes.errors import TournamentError
+from models.base_classes import Player, Tournament, Game, Season
+from models.errors import TournamentError
 from testing_utils.test_data import c_tournaments, seasons, games
 from transactions.transaction_log import TransactionLogger
 from database import db

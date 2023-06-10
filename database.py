@@ -2,10 +2,10 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo import DESCENDING
 from fastapi.encoders import jsonable_encoder
 from typing import Union
-from classes.players import PlayerModel, PlayerTeamModel
-from classes.teams import TeamModel
+from models.players import PlayerModel, PlayerTeamModel
+from models.settings import SettingsModel
+from models.teams import TeamModel
 from os import getenv
-
 
 db_user = getenv('DB_USER')
 db_pw = getenv('DB_PW')
@@ -16,7 +16,7 @@ db: AsyncIOMotorDatabase = client[db_name]
 
 
 async def db_get_settings() -> dict:
-    settings = db['settings'].find_one({}, sort=[('_id', DESCENDING)])
+    settings = await db['settings'].find_one({}, sort=[('_id', DESCENDING)])
     return settings
 
 
@@ -24,7 +24,8 @@ async def db_set_settings(obj: dict):
     result = await db['settings'].insert_one(obj)
     return result
 
-async def db_add_one(db_name: str, obj: Union[PlayerModel, TeamModel, PlayerTeamModel]):
+
+async def db_add_one(db_name: str, obj: Union[PlayerModel, TeamModel, PlayerTeamModel, SettingsModel]):
     obj = jsonable_encoder(obj)
     new_obj = await db[db_name].insert_one(obj)
     created_obj = await db[db_name].find_one({"_id": new_obj.inserted_id})
@@ -70,48 +71,4 @@ async def db_count_items(db_name: str, query: Union[dict, None] = None):
 
 async def db_delete_one(db_name: str, obj_id: str):
     result = await db[db_name].delete_one({'_id': obj_id})
-    return result
-
-# TODO: get rid of this one?
-async def db_get_full_team(team_id: str = None):
-    pipeline = [
-        {
-            '$lookup': {
-                'from': 'players',
-                'localField': 'captain',
-                'foreignField': '_id',
-                'as': 'captain'
-            }
-        }, {
-            '$lookup': {
-                'from': 'players',
-                'localField': 'co_captain',
-                'foreignField': '_id',
-                'as': 'co_captain'
-            }
-        }, {
-            '$unwind': {
-                'path': '$captain',
-                'preserveNullAndEmptyArrays': False
-            }
-        }, {
-            '$unwind': {
-                'path': '$co_captain'
-            }
-        }, {
-            '$lookup': {
-                'from': 'player_team_link',
-                'localField': '_id',
-                'foreignField': 'team',
-                'as': 'players'
-            }
-        }, {
-            '$lookup': {
-                'from': 'players',
-                'localField': 'players.player',
-                'foreignField': '_id',
-                'as': 'players'
-            }
-        }]
-    result = await db['teams'].aggregate(pipeline).to_list(length=None)
     return result

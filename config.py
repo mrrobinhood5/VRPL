@@ -1,5 +1,6 @@
 import os
 from discord import Intents
+from database import db_get_settings
 
 # discord CONSTANTS
 BOT_TOKEN = os.getenv('BOT_TOKEN')
@@ -12,9 +13,7 @@ BOT_OWNER = os.getenv('BOT_OWNER')
 DEFAULT_LOGO = "https://i.imgur.com/d4SLqgD.png"
 
 # server SPECIFIC
-# TODO: move these to the database and make admin commands to set them
-PLAYER_UPDATE_CHANNEL = 1115090885672194120
-TEAM_UPDATE_CHANNEL = 1115090917234323476
+
 
 # daily quote
 QUOTES_URL = "https://zenquotes.io/api/random"

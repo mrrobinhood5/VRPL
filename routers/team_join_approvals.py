@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from classes.players import PlayerTeamModel
+from models.players import PlayerTeamModel
 from database import db_find_some
 
 router = APIRouter(tags=['approvals'])

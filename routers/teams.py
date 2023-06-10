@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from classes.teams import TeamModel, UpdateTeamModel
-from classes.players import PlayerTeamModel, PlayerModel, UpdatePlayerTeamModel
+from models.teams import TeamModel, UpdateTeamModel
+from models.players import PlayerTeamModel, PlayerModel, UpdatePlayerTeamModel
 from fastapi import Body, HTTPException, status
 from fastapi.responses import JSONResponse
 from database import db_delete_one, db_count_items, db_find_some, db_add_one, db_find_all, db_find_one, db_update_one
