@@ -7,14 +7,16 @@ from fastapi.exceptions import HTTPException
 from routers.teams import register_team, list_teams, get_team_members, update_team, request_to_join_team
 from routers.players import show_player, get_player_team
 
-from models.teams import TeamModel, UpdateTeamModel, TeamRegisterModal, TeamChooseView
-from models.team_player_mix import FullTeamModel, FullTeamEmbed, TeamCarousel, OwnTeamView, OwnTeamEmbed, NewTeamEmbed
+from models.teams import TeamModel, UpdateTeamModel
+from modals.teams import TeamRegisterModal
+from views.teams import TeamChooseView
+from views.teamplayers import TeamCarousel, OwnTeamView
+from models.teamplayers import FullTeamModel
+from embeds.teamplayers import FullTeamEmbed,  OwnTeamEmbed, NewTeamEmbed
 from models.players import PlayerModel, PlayerTeamModel
 
 from models.errors import GenericErrorEmbed
 from typing import Optional
-
-import json
 
 
 class TeamRegisterPersistent(View):
@@ -56,17 +58,20 @@ class TeamRegisterPersistent(View):
             except HTTPException as e:  # doesn't belong to team
                 teams = await list_teams()
                 teams = [TeamModel(**team) for team in teams]
-                options = [SelectOption(label=team.name, value=f'{str(team.id)}:{team.name}', description=team.team_motto)
+                options = [SelectOption(label=team.name, value=f'{str(team.id)}:{team.name}',
+                                        description=team.team_motto)
                            for team in teams if team.active]
                 view = TeamChooseView(options=options)
-                await inter.response.send_message(content='Where do you want to send your request?', view=view, ephemeral=True)
+                await inter.response.send_message(content='Where do you want to send your request?', view=view,
+                                                  ephemeral=True)
                 await view.wait()
                 try:
                     await request_to_join_team(view.team_value[0], PlayerTeamModel(**{"player": player['_id']}))
                 except HTTPException as e:  # will error out if a similar request has been submitted
                     inter.channel.send(embed=GenericErrorEmbed(inter.user, e))
             else:  # player already belongs to team
-                await inter.response.send_message(content=f'You already belong to {player_team["name"]}', ephemeral=True)
+                await inter.response.send_message(content=f'You already belong to {player_team["name"]}',
+                                                  ephemeral=True)
 
 
 async def build_full_team(team: TeamModel) -> FullTeamModel:

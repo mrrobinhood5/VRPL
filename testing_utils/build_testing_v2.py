@@ -1,6 +1,7 @@
 import requests
 from json import dumps
-from utils import generate_username, generate_guid, generate_team_name, generate_description, generate_email, get_discord_ids
+from utils import generate_username, generate_guid, generate_team_name, generate_description, generate_email, \
+    get_discord_ids
 from random import randint
 
 api_url = 'http://localhost:8080'

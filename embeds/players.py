@@ -11,7 +11,8 @@ class PlayerRegisterEmbed(Embed):
                                                    f'conduct and rules')
         self.add_field(name='Game UID', value=f'You can find the game UID from the options menu. Please have it ready.')
         self.add_field(name='Calibrated Height', value=f'Please list the height you will be using in this league. '
-                                                       f'You can update it later, but we track all edits to prevent abuse')
+                                                       f'You can update it later, but we track all edits to prevent '
+                                                       f'abuse')
         self.add_field(name='Optionals', value=f'Providing your email is optional, and not required to participate')
         self.set_image(url='https://i.imgur.com/34eBdG2.png')
         self.set_thumbnail(url='https://i.imgur.com/VwQoXMB.png')

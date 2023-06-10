@@ -5,7 +5,7 @@ from discord.ext.commands import Context, Greedy
 from discord import Object, HTTPException, app_commands, Interaction, TextChannel
 
 from embeds.players import PlayerRegisterEmbed
-from models.teams import TeamRegisterEmbed
+from embeds.teams import TeamRegisterEmbed
 from cogs.teams import TeamRegisterPersistent
 from routers.admin import drop_db, set_settings
 from views.players import PlayerRegisterPersistent

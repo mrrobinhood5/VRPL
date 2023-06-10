@@ -16,6 +16,7 @@ class SettingsModel(Base):
             }
         }
 
+
 class UpdateSettingsModel(Base):
     name: Optional[str]
     teams_channel: Optional[int]

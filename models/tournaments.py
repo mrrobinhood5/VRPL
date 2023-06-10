@@ -217,7 +217,8 @@
 #         else:
 #             raise MatchError('You are not approver, you cannot Disapprove')
 #
-#     def submit_score(self, submitter: ObjectId, home_score: Union[int, MatchScore], away_score: Union[int, MatchScore]):
+#     def submit_score(self, submitter: ObjectId, home_score: Union[int, MatchScore],
+#     away_score: Union[int, MatchScore]):
 #         """ Home team captain/co-captain are the only ones to scores, Away team captain/co-captain validates scores"""
 #         # Scores cannot be submitted before the match is scheduled
 #         if not self.scheduled:

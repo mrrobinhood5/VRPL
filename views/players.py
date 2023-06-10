@@ -16,7 +16,7 @@ class PlayerRegisterPersistent(View):
     """ This is the View that will be used for Player Registrations """
     def __init__(self):
         super().__init__(timeout=None)
-        self.updated_player: PlayerModel = None
+        self.updated_player: Optional[PlayerModel] = None
 
     @button(label='Register a Player', style=ButtonStyle.green, custom_id='player:register')
     async def register(self, inter: Interaction, button: Button):
@@ -28,7 +28,8 @@ class PlayerRegisterPersistent(View):
         try:
             await register_player(self.updated_player)
             self.updated_player.discord_user = inter.user
-            await inter.client.get_channel(channel).send(content="**Player Registration**", embed=PlayerEmbed(self.updated_player))
+            await inter.client.get_channel(channel).send(content="**Player Registration**",
+                                                         embed=PlayerEmbed(self.updated_player))
         except HTTPException as e:
             await inter.client.get_channel(channel).send(embed=GenericErrorEmbed(inter.user, e), delete_after=10)
 
@@ -67,7 +68,8 @@ class PlayerCarousel(View):
         self.timeout = None
         self.updated_player = None
 
-    def is_me(self, inter: Interaction, player: PlayerModel) -> bool:
+    @staticmethod
+    def is_me(inter: Interaction, player: PlayerModel) -> bool:
         return inter.user.id == player.discord_user.id
 
     @property

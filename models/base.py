@@ -1,5 +1,5 @@
 from bson.objectid import ObjectId
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class PyObjectId(ObjectId):
@@ -10,7 +10,7 @@ class PyObjectId(ObjectId):
     @classmethod
     def validate(cls, v):
         if not ObjectId.is_valid(v):
-            raise ValueError("Invalid objectid")
+            raise ValueError("Invalid Object ID")
         return ObjectId(v)
 
     @classmethod

@@ -1,6 +1,5 @@
 import os
 from discord import Intents
-from database import db_get_settings
 
 # discord CONSTANTS
 BOT_TOKEN = os.getenv('BOT_TOKEN')

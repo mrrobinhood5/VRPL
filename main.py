@@ -11,7 +11,6 @@ from models.settings import SettingsModel
 import discord
 import uvicorn
 
-
 app = FastAPI()
 bot = commands.Bot(command_prefix=BOT_PREFIX, description='VRPL Team Manager', intents=INTENTS)
 bot.owner_id = int(BOT_OWNER)
@@ -51,7 +50,6 @@ async def on_ready():
     bot.server_config = SettingsModel(**server_config)
 
 
-
 @bot.event
 async def setup_hook():
     bot.add_view(PlayerRegisterPersistent())
@@ -65,4 +63,3 @@ async def run_bot():
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host='0.0.0.0', port=8080, reload=False)
-
