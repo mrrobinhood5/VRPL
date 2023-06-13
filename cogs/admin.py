@@ -6,8 +6,8 @@ from discord import Object, HTTPException, app_commands, Interaction, TextChanne
 
 from embeds.players import PlayerRegisterEmbed
 from embeds.teams import TeamRegisterEmbed
-from cogs.teams import TeamRegisterPersistent
 from routers.admin import drop_db, set_settings
+from views.teams import TeamRegisterPersistent
 from views.players import PlayerRegisterPersistent
 from models.settings import SettingsModel
 
@@ -21,7 +21,7 @@ class AdminCommands(commands.Cog, name='Admin Commands'):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name='config', description='set default channels')
+    @app_commands.command(name='config', description='Set default channels')
     @commands.is_owner()
     @app_commands.default_permissions(administrator=True)
     async def config_channels(self, inter: Interaction, channel: Literal['Player', 'Team'], select: TextChannel):
@@ -33,10 +33,12 @@ class AdminCommands(commands.Cog, name='Admin Commands'):
 
         if channel == 'Player':
             settings.players_channel = select.id
-            await _.send(embed=PlayerRegisterEmbed(), view=PlayerRegisterPersistent())
+            message = await _.send(embed=PlayerRegisterEmbed(), view=PlayerRegisterPersistent())
+            settings.players_message = message.id
         else:
             settings.teams_channel = select.id
-            await _.send(embed=TeamRegisterEmbed(), view=TeamRegisterPersistent())
+            message = await _.send(embed=TeamRegisterEmbed(), view=TeamRegisterPersistent())
+            settings.teams_message = message.id
         await set_settings(settings)
 
     @commands.command(name='drop_db')

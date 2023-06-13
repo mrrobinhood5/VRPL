@@ -5,8 +5,8 @@ from config import BOT_TOKEN, INTENTS, BOT_PREFIX, BOT_OWNER, cogs
 from discord.ext import commands
 from routers import players, teams, team_join_approvals, admin
 from views.players import PlayerRegisterPersistent
-from cogs.teams import TeamRegisterPersistent
 from models.settings import SettingsModel
+from views.teams import TeamRegisterPersistent
 
 import discord
 import uvicorn

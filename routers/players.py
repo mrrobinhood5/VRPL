@@ -3,6 +3,8 @@ from fastapi.responses import JSONResponse
 
 from models.players import PlayerModel, UpdatePlayerModel
 from models.teams import TeamModel
+from models.teamplayers import FullTeamModel
+from typing import Union
 
 from database import db_find_one_by_other, db_add_one, db_find_all, db_find_one, db_update_one, db_update_one_discord
 
@@ -34,6 +36,9 @@ async def list_players(n: int = 100):
 @router.get("/{player_id}/team", response_description="Get a Players Team", response_model=TeamModel)
 async def get_player_team(player_id: str) -> dict:
     """ Retrieve the team the player belongs to """
+    # check to see if you got a discord id:
+    if discord_player := await db_find_one_by_other('players', {'discord_id': player_id}):
+        player_id = discord_player.get('_id')
     player_link = await db_find_one_by_other('player_team_link', {'player': player_id, 'approved': True})
     if not player_link:
         raise HTTPException(status_code=404, detail=f'You do not belong to any teams')

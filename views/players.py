@@ -3,10 +3,12 @@ from discord import ButtonStyle, Interaction
 
 from fastapi.exceptions import HTTPException
 
-from embeds.players import PlayerEmbed
+from embeds.players import PlayerEmbed, PlayerRegisterEmbed
 from models.players import PlayerModel, UpdatePlayerModel
+from models.settings import SettingsModel
 from modals.players import PlayerRegisterModal, PlayerUpdateModal
 from routers.players import register_player
+from routers.admin import set_settings
 from models.errors import GenericErrorEmbed
 
 from typing import Optional
@@ -30,6 +32,15 @@ class PlayerRegisterPersistent(View):
             self.updated_player.discord_user = inter.user
             await inter.client.get_channel(channel).send(content="**Player Registration**",
                                                          embed=PlayerEmbed(self.updated_player))
+
+            # do the settings thing
+            settings: SettingsModel = inter.client.server_config
+            old_message = await inter.channel.fetch_message(settings.players_message)
+            await old_message.delete()
+            message = await inter.channel.send(embed=PlayerRegisterEmbed(), view=PlayerRegisterPersistent())
+            settings.players_message = message.id
+            await set_settings(settings)
+
         except HTTPException as e:
             await inter.client.get_channel(channel).send(embed=GenericErrorEmbed(inter.user, e), delete_after=10)
 

@@ -1,6 +1,8 @@
 from discord import Embed, Color
 from models.teamplayers import FullTeamModel
+from models.teams import TeamModel
 from config import DEFAULT_LOGO
+from typing import Union
 
 
 class FullTeamEmbed(Embed):
@@ -27,9 +29,9 @@ class OwnTeamEmbed(FullTeamEmbed):
         self.add_field(name='Infractions', value=f'```Infractions Here```')
 
 
-class NewTeamEmbed(Embed):
+class NewTeamEmbed(Embed):  # TODO: make this accept both a FullTeamModel or TeamModel
 
-    def __init__(self, team: FullTeamModel):
+    def __init__(self, team: Union[FullTeamModel, TeamModel]):
         super().__init__(title=team.name, description=team.team_motto)
         self.color = Color.blurple()
         self.set_thumbnail(

@@ -53,7 +53,9 @@ class PlayerCommands(commands.GroupCog, name='players'):
 
             await view.wait()
             await process_player_update(inter, view.updated_player) if view.updated_player else 0
-            # TODO: post the updates to player in the player channel
+            if _ := inter.client.server_config.players_channel:
+                await inter.client.get_channel(_).send(content=f'{view.updated_player}')
+                # TODO: create a Updated Player Embed
 
         except HTTPException as e:
             await inter.followup.send(embed=GenericErrorEmbed(inter.user, e))

@@ -1,11 +1,23 @@
 from fastapi import APIRouter
 from models.teams import TeamModel, UpdateTeamModel
+from models.teamplayers import FullTeamModel
 from models.players import PlayerTeamModel, PlayerModel, UpdatePlayerTeamModel
+from routers.players import show_player
 from fastapi import Body, HTTPException, status
+from typing import Union
 from fastapi.responses import JSONResponse
 from database import db_delete_one, db_count_items, db_find_some, db_add_one, db_find_all, db_find_one, db_update_one
 
 router = APIRouter(tags=['teams'], prefix='/teams')
+
+
+async def build_full_team_helper(team: dict) -> dict:
+    team['captain'] = await show_player(team['captain'])
+    if c := team.get('co_captain'):
+        team['co_captain'] = await show_player(c)
+    team_members = await list_team_players(team.get('_id'))
+    full_team = {**team, **{"members": team_members}}
+    return full_team
 
 
 @router.post("/register", response_description="Register a new Team", response_model=TeamModel)
@@ -29,18 +41,26 @@ async def register_team(team: TeamModel = Body(...)):
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=created_team)
 
 
-@router.get("/all", response_description="List all registered teams", response_model=list[TeamModel])
-async def list_teams(n: int = 100) -> list[dict]:
+@router.get("/all", response_description="List all registered teams",
+            response_model=list[Union[TeamModel, FullTeamModel]])
+async def list_teams(n: int = 100, full: bool = False) -> list[dict]:
     """ Lists all registered teams """
     teams = await db_find_all('teams', n)
+    if not full:
+        return teams
+    teams = [await build_full_team_helper(team) for team in teams]
     return teams
 
 
-@router.get("/{team_id}", response_description="Get a single Team", response_model=TeamModel)
-async def show_team(team_id: str):
+@router.get("/{team_id}", response_description="Get a single Team", response_model=Union[TeamModel, FullTeamModel])
+async def show_team(team_id: str, full: bool = False):
     """ To retrieve a specific team, provide the Team ObjectID """
     if (team := await db_find_one('teams', team_id)) is not None:
-        return team
+        if not full:
+            return team
+        full_team = build_full_team_helper(team)
+        return await full_team
+
     raise HTTPException(status_code=404, detail=f"Team {team_id} not found")
 
 
