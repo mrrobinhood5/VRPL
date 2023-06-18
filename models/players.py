@@ -1,6 +1,7 @@
 from pydantic import EmailStr, Field
 from typing import Optional, Any
 from models.base import Base, PyObjectId
+from models.teams import TeamModel
 
 
 class PlayerModel(Base):
@@ -58,6 +59,11 @@ class PlayerTeamModel(Base):
                 "player": "ObjectId"
             }
         }
+
+
+class PlayerTeamFullModel(PlayerTeamModel):
+    player: PlayerModel
+    team: TeamModel
 
 
 class UpdatePlayerTeamModel(Base):

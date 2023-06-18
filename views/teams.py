@@ -84,7 +84,12 @@ class TeamRegisterPersistent(View):
                 view = TeamChooseView(options=options)
                 await inter.response.send_message(content='Where do you want to send your request?', view=view,
                                                   ephemeral=True)
+
                 await view.wait()
+                view.clear_items()
+                msg = await inter.original_response()
+                await msg.edit(content=f'Request Sent!', view=view)
+
                 try:
                     await request_to_join_team(view.team_value[0], PlayerTeamModel(**{"player": player['_id']}))
                 except HTTPException as e:  # will error out if a similar request has been submitted

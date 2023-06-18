@@ -3,11 +3,13 @@ from fastapi.exceptions import HTTPException
 from discord.ext import commands
 from discord import app_commands, Interaction
 
-from embeds.players import PlayerEmbed, SelfPlayerEmbed
+from embeds.players import PlayerEmbed, SelfPlayerEmbed, PlayerRegisterEmbed
 from routers.players import list_players, show_player, update_player
+from routers.admin import set_settings
 from models.players import PlayerModel, UpdatePlayerModel
 from models.errors import GenericErrorEmbed
-from views.players import PlayerCarousel, OwnPlayerView
+from models.settings import SettingsModel
+from views.players import PlayerCarousel, OwnPlayerView, PlayerRegisterPersistent
 
 
 async def process_player_update(inter: Interaction, player: UpdatePlayerModel):
@@ -54,8 +56,17 @@ class PlayerCommands(commands.GroupCog, name='players'):
             await view.wait()
             await process_player_update(inter, view.updated_player) if view.updated_player else 0
             if _ := inter.client.server_config.players_channel:
-                await inter.client.get_channel(_).send(content=f'{view.updated_player}')
-                # TODO: create a Updated Player Embed
+                updated_player = PlayerModel(**await show_player(str(inter.user.id)))
+                updated_player.discord_user = inter.user
+                await inter.client.get_channel(_).send(content=f'**Player Update**', embed=PlayerEmbed(updated_player))
+                #
+                settings: SettingsModel = inter.client.server_config
+                old_message = await inter.channel.fetch_message(settings.players_message)
+                await old_message.delete()
+                message = await inter.channel.send(embed=PlayerRegisterEmbed(), view=PlayerRegisterPersistent())
+                settings.players_message = message.id
+                await set_settings(settings)
+
 
         except HTTPException as e:
             await inter.followup.send(embed=GenericErrorEmbed(inter.user, e))

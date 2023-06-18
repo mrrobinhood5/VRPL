@@ -1,12 +1,8 @@
 from pydantic import HttpUrl, Field
 from models.base import Base, PyObjectId
-from models.players import PlayerModel
 
 from typing import Optional, Union
-from discord.ui import Modal, View, Select
-from discord import Embed, Interaction, SelectOption
 
-import discord
 
 
 class TeamModel(Base):

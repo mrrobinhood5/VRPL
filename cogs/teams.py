@@ -1,42 +1,24 @@
 from discord.ext import commands
-from discord import app_commands, Interaction, ButtonStyle, SelectOption
-from discord.ui import View, button, Button
+from discord import app_commands, Interaction
+
 
 from fastapi.exceptions import HTTPException
 
-from routers.teams import register_team, list_teams, get_team_members, update_team, request_to_join_team, show_team
+from routers.teams import list_teams, update_team, show_team
 from routers.players import show_player, get_player_team
+from routers.admin import set_settings
 
-from models.teams import TeamModel, UpdateTeamModel
-from modals.teams import TeamRegisterModal
-from views.teams import TeamChooseView
+from models.teams import UpdateTeamModel
+from models.settings import SettingsModel
+
 from views.teamplayers import TeamCarousel, OwnTeamView
+from views.teams import TeamRegisterPersistent
 from models.teamplayers import FullTeamModel
-from embeds.teamplayers import FullTeamEmbed,  OwnTeamEmbed, NewTeamEmbed
-from models.players import PlayerModel, PlayerTeamModel
+from embeds.teamplayers import FullTeamEmbed,  OwnTeamEmbed
+from embeds.teams import TeamRegisterEmbed
+
 
 from models.errors import GenericErrorEmbed
-from typing import Optional
-
-
-
-
-
-# async def build_full_team(team: TeamModel) -> FullTeamModel:
-#     """ helper function to get a full team model, to include captain, co captain and players as objects """
-#     team_captain = PlayerModel(**await show_player(str(team.captain)))
-#     if team.co_captain:
-#         team_co_captain = PlayerModel(**await show_player(str(team.co_captain)))
-#     else:
-#         team_co_captain = None
-#     team_members = [PlayerModel(**player) for player in await get_team_members(str(team.id))]
-#
-#     full_team = {**team.dict(), **{
-#         "captain": team_captain,
-#         "co_captain": team_co_captain,
-#         "members": team_members
-#     }}
-#     return FullTeamModel(**full_team)
 
 
 async def process_team_update(inter: Interaction, team_id: str, team: UpdateTeamModel):
@@ -64,7 +46,12 @@ class TeamCommands(commands.GroupCog, name='teams'):
             return
 
         await view.wait()
+
+        # TODO: this part shouldnt be here on the cog
         await process_team_update(inter, str(view.team.id), view.updated_team) if view.updated_team else 0
+        updated_team = FullTeamModel(**await show_team(str(view.team.id), full=True))
+        await view.msg_for_embed.edit(content=f'', embed=FullTeamEmbed(updated_team))
+        #TODO: still have to get the view to send persistent embed back to bottom
 
     @app_commands.command(name='list', description='List all teams')
     async def teams_view_all(self, inter: Interaction):
@@ -94,13 +81,23 @@ class TeamCommands(commands.GroupCog, name='teams'):
             await inter.followup.send(embed=GenericErrorEmbed(inter.user, e))
             return
 
-        full_team = await show_team(team.get('_id'))
+        full_team = FullTeamModel(**await show_team(team.get('_id'), full=True))
         view = OwnTeamView(full_team)
         await inter.followup.send(embed=OwnTeamEmbed(full_team), view=view)
-
         await view.wait()
-        await process_team_update(inter, str(view.team.id), view.updated_team) if view.updated_team else 0
 
+        # TODO: This wants to process team edits, but shouldnt run with any other buttons.
+        # await process_team_update(inter, str(view.team.id), view.updated_team) if view.updated_team else 0
+        # updated_team = FullTeamModel(**await show_team(str(view.team.id), full=True))
+        # await view.msg_for_embed.edit(content=f'', embed=FullTeamEmbed(updated_team))
+
+        # TODO: this is repetitive, and there needs to be a better way to do settings
+        # settings: SettingsModel = inter.client.server_config
+        # old_message = await inter.channel.fetch_message(settings.teams_message)
+        # await old_message.delete()
+        # message = await inter.channel.send(embed=TeamRegisterEmbed(), view=TeamRegisterPersistent())
+        # settings.players_message = message.id
+        # await set_settings(settings)
 
 
 async def setup(bot: commands.Bot):

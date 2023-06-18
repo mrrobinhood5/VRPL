@@ -10,6 +10,8 @@ from modals.players import PlayerRegisterModal, PlayerUpdateModal
 from routers.players import register_player
 from routers.admin import set_settings
 from models.errors import GenericErrorEmbed
+from views.buttons import UpdateButton, CounterButton, ControlButton
+from views.shared import Carousel
 
 from typing import Optional
 
@@ -49,16 +51,12 @@ class OwnPlayerView(View):
 
     def __init__(self, player: PlayerModel):
         super().__init__()
+        self.update = UpdateButton(PlayerUpdateModal(view=self))
+        self.add_item(self.update)
+
         self.player = player
         self.user = player.discord_user
         self.updated_player: Optional[UpdatePlayerModel] = None
-
-    @button(label='Update', style=ButtonStyle.blurple)
-    async def update(self, inter: Interaction, button: Button):
-        modal = PlayerUpdateModal(view=self)
-        await inter.response.send_modal(modal)
-        await modal.wait()
-        self.stop()
 
     async def on_error(self, inter: Interaction, error: Exception, item) -> None:
         print(f'{error} called from the view')
@@ -70,59 +68,14 @@ class OwnPlayerView(View):
             return True
 
 
-class PlayerCarousel(View):
+class PlayerCarousel(Carousel):
 
-    def __init__(self, players: Optional[list[PlayerModel]] = None):
-        super().__init__()
-        self.players = players
-        self.obj_index = 0
-        self.timeout = None
-        self.updated_player = None
+    def __init__(self, items: Optional[list[PlayerModel]] = None):
+        super().__init__(items=items, modal=PlayerRegisterModal(self))
 
     @staticmethod
-    def is_me(inter: Interaction, player: PlayerModel) -> bool:
-        return inter.user.id == player.discord_user.id
+    def is_mine(inter: Interaction, player: PlayerModel) -> bool:
+        return str(inter.user.id) == player.discord_id
 
-    @property
-    def player_count(self):
-        return len(self.players)
-
-    @property
-    def next_player(self):
-        self.obj_index = (self.obj_index + 1) % self.player_count
-        yield self.players[self.obj_index]
-
-    @property
-    def prev_player(self):
-        self.obj_index = (self.obj_index - 1) % self.player_count
-        yield self.players[self.obj_index]
-
-    @button(label='< Previous', style=ButtonStyle.green)
-    async def previous(self, inter: Interaction, button: Button):
-        if self.is_me(inter, player := next(self.prev_player)):
-            self.update.disabled = False
-        else:
-            self.update.disabled = True
-        self.counter.label = f'{self.obj_index + 1} of {self.player_count}'
-        await inter.response.edit_message(embed=PlayerEmbed(player), view=self)
-
-    @button(label=f'1 of x', style=ButtonStyle.grey)
-    async def counter(self, inter: Interaction, button: Button):
-        self.counter.label = f'{self.obj_index + 1} of {self.player_count}'
-        await inter.response.edit_message(view=self)
-
-    @button(label='Update', style=ButtonStyle.blurple, disabled=True)
-    async def update(self, inter: Interaction, button: Button):
-        modal = PlayerUpdateModal(view=self)
-        await inter.response.send_modal(modal)
-        await modal.wait()
-        self.stop()
-
-    @button(label='Next >', style=ButtonStyle.green)
-    async def next(self, inter: Interaction, button: Button):
-        if self.is_me(inter, player := next(self.next_player)):
-            self.update.disabled = False
-        else:
-            self.update.disabled = True
-        self.counter.label = f'{self.obj_index + 1} of {self.player_count}'
-        await inter.response.edit_message(embed=PlayerEmbed(player), view=self)
+    async def update_view(self, inter: Interaction, item: PlayerModel):
+        await inter.response.edit_message(embed=PlayerEmbed(item), view=self)

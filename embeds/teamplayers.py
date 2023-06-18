@@ -39,3 +39,6 @@ class NewTeamEmbed(Embed):  # TODO: make this accept both a FullTeamModel or Tea
         self.set_footer(text=f'Active: {team.active}')
         self.add_field(name='MMR', value=f'```{team.team_mmr}```', inline=True)
         self.add_field(name='Captain', value=f'```{team.captain.name}```')
+
+
+

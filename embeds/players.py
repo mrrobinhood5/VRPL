@@ -19,12 +19,14 @@ class PlayerRegisterEmbed(Embed):
 
 
 class PlayerEmbed(Embed):
-
+    """ Embed used for public facing, removes email and warnings/offences """
     def __init__(self, player: PlayerModel):
-        super().__init__(title=player.name, description=f'AKA {player.discord_user.name}')
+        super().__init__(title=player.name,
+                         description=f'AKA {player.discord_user.name if player.discord_user else "N/A"}')
         self.color = Color.orange()
-        if player.discord_user.avatar:
-            self.set_thumbnail(url=player.discord_user.avatar.url)
+        if player.discord_user:
+            if player.discord_user.avatar:
+                self.set_thumbnail(url=player.discord_user.avatar.url)
         else:
             self.set_thumbnail(url=DEFAULT_LOGO)
         self.set_footer(text=f'Banned: {player.is_banned} | Suspended: {player.is_suspended}')
@@ -34,7 +36,7 @@ class PlayerEmbed(Embed):
 
 
 class SelfPlayerEmbed(PlayerEmbed):
-
+    """ Embed used for more detail. """
     def __init__(self, player: PlayerModel):
         super().__init__(player=player)
         self.add_field(name='E-mail', value=f'```{player.promo_email}```')
