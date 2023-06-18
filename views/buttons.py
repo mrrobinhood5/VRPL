@@ -30,6 +30,7 @@ class UpdateButton(Button):
     async def callback(self, inter: Interaction):
         await inter.response.send_modal(self.modal)
         await self.modal.wait()
+        await self.view.callback(inter)
         self.view.stop()
 
 
@@ -49,6 +50,8 @@ class ApproveButton(Button):
         super().__init__(custom_id='approve', label='Approve', style=ButtonStyle.green)
 
     async def callback(self, inter: Interaction):
+        self.view.approval = True
+        await self.view.callback(inter)
         self.view.stop()
 
 
@@ -58,4 +61,6 @@ class RejectButton(Button):
         super().__init__(custom_id='reject', label='Reject', style=ButtonStyle.danger)
 
     async def callback(self, inter: Interaction):
+        self.view.approval = False
+        await self.view.callback(inter)
         self.view.stop()

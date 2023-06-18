@@ -1,19 +1,34 @@
-from discord.ui import View, button, Button, Modal
+from discord.ui import View, button, Button
 from discord import Interaction, ButtonStyle, Message
 from typing import Optional
 
-from models.players import PlayerTeamModel, PlayerModel
+from fastapi import HTTPException
+
+from models.players import PlayerModel, PlayerTeamFullModel
 from models.teamplayers import FullTeamModel
 from modals.teams import TeamUpdateModal
 from models.teams import UpdateTeamModel
 from embeds.teamplayers import FullTeamEmbed
 from embeds.players import PlayerEmbed
-from views.buttons import UpdateButton, CounterButton
+from models.errors import GenericErrorEmbed
+from views.buttons import UpdateButton
 from views.approvals import TeamJoinsCarousel
 from views.shared import Carousel
 
-from routers.teams import list_pending_approvals
-from routers.players import show_player
+from routers.teams import list_pending_approvals, update_team, show_team
+
+
+
+async def process_team_update(inter: Interaction, team_id: str, team: UpdateTeamModel):
+    """ helper function to send updates of teams """
+    try:
+        await update_team(team_id, team)
+        if _ := inter.client.server_config.teams_channel:
+            updated_team = FullTeamModel(**await show_team(str(team_id), full=True))
+            await inter.client.get_channel(_).send(content=f'', embed=FullTeamEmbed(updated_team))
+
+    except HTTPException as e:
+        await inter.channel.send(embed=GenericErrorEmbed(inter.user, e))
 
 
 class TeamCarousel(Carousel):
@@ -32,6 +47,10 @@ class TeamCarousel(Carousel):
     async def update_view(self, inter: Interaction, item: FullTeamModel):
         await inter.response.edit_message(embed=FullTeamEmbed(item), view=self)
 
+    async def callback(self, inter: Interaction):
+        await process_team_update(inter, str(self.item.id), self.updated_item) if self.updated_item else 0
+        self.stop()
+
 
 class OwnTeamView(View):
 
@@ -43,16 +62,17 @@ class OwnTeamView(View):
         self.updated_team: Optional[UpdateTeamModel] = None
         self.msg_for_embed: Optional[Message] = None
 
-
     @button(label='View Pending Joins', style=ButtonStyle.green, disabled=False)
     async def approve_joins(self, inter: Interaction, button: Button):
-        # then build the view
-        approvals = await list_pending_approvals(str(self.team.id))
-        players = [PlayerModel(**await show_player(str(approval.get('player')))) for approval in approvals]
-        embed = PlayerEmbed(players[0])
-        view = TeamJoinsCarousel(players)
-        await inter.response.send_message(embed=embed, view=view, ephemeral=True)
-        await view.wait()
+        approvals = await list_pending_approvals(str(self.team.id), full=True)
+        if approvals:
+            approvals = [PlayerTeamFullModel(**approval) for approval in approvals]
+            embed = PlayerEmbed(approvals[0].player)
+            view = TeamJoinsCarousel(approvals)
+            await inter.response.send_message(embed=embed, view=view, ephemeral=True)
+            await view.wait()
+        else:
+            await inter.response.send_message(content=f'There are no pending Approvals', delete_after=10)
         self.stop()
 
     @button(label='Remove Player', style=ButtonStyle.danger, disabled=False)
@@ -74,3 +94,7 @@ class OwnTeamView(View):
         else:
 
             return True
+
+    async def callback(self, inter: Interaction):
+        await process_team_update(inter, str(self.team.id), self.updated_team) if self.updated_team else 0
+        self.stop()

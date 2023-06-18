@@ -12,13 +12,13 @@ from models.settings import SettingsModel
 from views.players import PlayerCarousel, OwnPlayerView, PlayerRegisterPersistent
 
 
-async def process_player_update(inter: Interaction, player: UpdatePlayerModel):
-    """ Helper function to process any player updates """
-    try:
-        await update_player(str(inter.user.id), player)
-    except HTTPException as e:
-        channel = inter.channel
-        await inter.client.get_channel(channel.id).send(embed=GenericErrorEmbed(inter.user, e))
+# async def process_player_update(inter: Interaction, player: UpdatePlayerModel):
+#     """ Helper function to process any player updates """
+#     try:
+#         await update_player(str(inter.user.id), player)
+#     except HTTPException as e:
+#         channel = inter.channel
+#         await inter.client.get_channel(channel.id).send(embed=GenericErrorEmbed(inter.user, e))
 
 
 class PlayerCommands(commands.GroupCog, name='players'):
@@ -40,7 +40,7 @@ class PlayerCommands(commands.GroupCog, name='players'):
         await inter.followup.send(embed=PlayerEmbed(players[0]), view=view)
 
         await view.wait()
-        await process_player_update(inter, view.updated_player) if view.updated_player else 0
+        # await process_player_update(inter, view.updated_player) if view.updated_player else 0
 
     @app_commands.command(name='me', description='View your own data')
     async def player_me(self, inter: Interaction):
@@ -54,18 +54,14 @@ class PlayerCommands(commands.GroupCog, name='players'):
             await inter.followup.send(embed=SelfPlayerEmbed(me), view=view)
 
             await view.wait()
-            await process_player_update(inter, view.updated_player) if view.updated_player else 0
-            if _ := inter.client.server_config.players_channel:
-                updated_player = PlayerModel(**await show_player(str(inter.user.id)))
-                updated_player.discord_user = inter.user
-                await inter.client.get_channel(_).send(content=f'**Player Update**', embed=PlayerEmbed(updated_player))
-                #
-                settings: SettingsModel = inter.client.server_config
-                old_message = await inter.channel.fetch_message(settings.players_message)
-                await old_message.delete()
-                message = await inter.channel.send(embed=PlayerRegisterEmbed(), view=PlayerRegisterPersistent())
-                settings.players_message = message.id
-                await set_settings(settings)
+
+            # TODO: maybe put this in a daily loop
+            # settings: SettingsModel = inter.client.server_config
+            # old_message = await inter.channel.fetch_message(settings.players_message)
+            # await old_message.delete()
+            # message = await inter.channel.send(embed=PlayerRegisterEmbed(), view=PlayerRegisterPersistent())
+            # settings.players_message = message.id
+            # await set_settings(settings)
 
 
         except HTTPException as e:
@@ -88,7 +84,7 @@ class PlayerCommands(commands.GroupCog, name='players'):
             view = PlayerCarousel(players)
             await inter.followup.send(embed=PlayerEmbed(players[0]), view=view)
             await view.wait()
-            await process_player_update(inter, view.updated_player) if view.updated_player else 0
+            # await process_player_update(inter, view.updated_player) if view.updated_player else 0
 
 
 async def setup(bot: commands.Bot):

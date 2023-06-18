@@ -12,8 +12,18 @@ from routers.admin import set_settings
 from models.errors import GenericErrorEmbed
 from views.buttons import UpdateButton, CounterButton, ControlButton
 from views.shared import Carousel
+from routers.players import update_player, show_player
 
 from typing import Optional
+
+
+async def process_player_update(inter: Interaction, player: UpdatePlayerModel):
+    """ Helper function to process any player updates """
+    try:
+        await update_player(str(inter.user.id), player)
+    except HTTPException as e:
+        channel = inter.channel
+        await inter.client.get_channel(channel.id).send(embed=GenericErrorEmbed(inter.user, e))
 
 
 class PlayerRegisterPersistent(View):
@@ -67,11 +77,19 @@ class OwnPlayerView(View):
         else:
             return True
 
+    async def callback(self, inter: Interaction):
+        await process_player_update(inter, self.updated_player) if self.updated_player else 0
+        if _ := inter.client.server_config.players_channel:
+            updated_player = PlayerModel(**await show_player(str(inter.user.id)))
+            updated_player.discord_user = inter.user
+            await inter.client.get_channel(_).send(content=f'**Player Update**', embed=PlayerEmbed(updated_player))
+        self.stop()
+
 
 class PlayerCarousel(Carousel):
 
     def __init__(self, items: Optional[list[PlayerModel]] = None):
-        super().__init__(items=items, modal=PlayerRegisterModal(self))
+        super().__init__(items=items, modal=PlayerUpdateModal(self))
 
     @staticmethod
     def is_mine(inter: Interaction, player: PlayerModel) -> bool:
@@ -79,3 +97,12 @@ class PlayerCarousel(Carousel):
 
     async def update_view(self, inter: Interaction, item: PlayerModel):
         await inter.response.edit_message(embed=PlayerEmbed(item), view=self)
+
+    async def callback(self, inter: Interaction):
+        await process_player_update(inter, self.updated_player) if self.updated_player else 0
+        if _ := inter.client.server_config.players_channel:
+            updated_player = PlayerModel(**await show_player(str(inter.user.id)))
+            updated_player.discord_user = inter.user
+            await inter.client.get_channel(_).send(content=f'**Player Update**', embed=PlayerEmbed(updated_player))
+        self.stop()
+

@@ -41,15 +41,15 @@ class TeamUpdateModal(Modal, title='Team Update'):
         self.view = view
 
     async def on_submit(self, inter: Interaction) -> None:
-        await inter.response.defer()
+        # await inter.response.defer()
         updated_team = {
             "name": self.name.value or None,
             "team_motto": self.motto.value or None,
             "team_logo": self.logo.value or None,
         }
-        self.view.updated_team = UpdateTeamModel(**updated_team)
-        msg = await inter.followup.send(f'Updates have been sent')
-        self.view.msg_for_embed = msg
+        self.view.updated_item = UpdateTeamModel(**updated_team)
+        await inter.response.send_message(f'Updates have been sent', delete_after=10)
+        # self.view.msg_for_embed = msg
         self.stop()
 
     async def on_error(self, inter: Interaction, error: Exception) -> None:

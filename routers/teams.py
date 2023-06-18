@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from models.teams import TeamModel, UpdateTeamModel
 from models.teamplayers import FullTeamModel
-from models.players import PlayerTeamModel, PlayerModel, UpdatePlayerTeamModel
+from models.players import PlayerTeamModel, PlayerModel, UpdatePlayerTeamModel, PlayerTeamFullModel
 from routers.players import show_player
 from fastapi import Body, HTTPException, status
 from typing import Union
@@ -157,10 +157,14 @@ async def get_team_members(team_id: str):
 
 
 @router.get("/{team_id}/approvals", response_description="List all pending Approvals",
-            response_model=list[PlayerTeamModel], tags=['teams'])
-async def list_pending_approvals(team_id: str):
+            response_model=list[Union[PlayerTeamModel, PlayerTeamFullModel]], tags=['teams'])
+async def list_pending_approvals(team_id: str, full: bool = False):
     """
     Lists pending approvals by team
     """
     results = await db_find_some("player_team_link", {"team": team_id, "approved": None})
+    if full:
+        for result in results:
+            result['player'] = await show_player(result['player'])
+            result['team'] = await show_team(result['team'])
     return results

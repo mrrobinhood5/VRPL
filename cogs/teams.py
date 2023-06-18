@@ -1,33 +1,17 @@
 from discord.ext import commands
 from discord import app_commands, Interaction
 
-
 from fastapi.exceptions import HTTPException
 
 from routers.teams import list_teams, update_team, show_team
 from routers.players import show_player, get_player_team
-from routers.admin import set_settings
-
-from models.teams import UpdateTeamModel
-from models.settings import SettingsModel
 
 from views.teamplayers import TeamCarousel, OwnTeamView
-from views.teams import TeamRegisterPersistent
+
 from models.teamplayers import FullTeamModel
 from embeds.teamplayers import FullTeamEmbed,  OwnTeamEmbed
-from embeds.teams import TeamRegisterEmbed
-
 
 from models.errors import GenericErrorEmbed
-
-
-async def process_team_update(inter: Interaction, team_id: str, team: UpdateTeamModel):
-    """ helper function to send updates of teams """
-    try:
-        await update_team(team_id, team)
-    except HTTPException as e:
-        channel = inter.channel
-        await inter.client.get_channel(channel.id).send(embed=GenericErrorEmbed(inter.user, e))
 
 
 class TeamCommands(commands.GroupCog, name='teams'):
@@ -46,11 +30,6 @@ class TeamCommands(commands.GroupCog, name='teams'):
             return
 
         await view.wait()
-
-        # TODO: this part shouldnt be here on the cog
-        await process_team_update(inter, str(view.team.id), view.updated_team) if view.updated_team else 0
-        updated_team = FullTeamModel(**await show_team(str(view.team.id), full=True))
-        await view.msg_for_embed.edit(content=f'', embed=FullTeamEmbed(updated_team))
         #TODO: still have to get the view to send persistent embed back to bottom
 
     @app_commands.command(name='list', description='List all teams')
@@ -85,11 +64,6 @@ class TeamCommands(commands.GroupCog, name='teams'):
         view = OwnTeamView(full_team)
         await inter.followup.send(embed=OwnTeamEmbed(full_team), view=view)
         await view.wait()
-
-        # TODO: This wants to process team edits, but shouldnt run with any other buttons.
-        # await process_team_update(inter, str(view.team.id), view.updated_team) if view.updated_team else 0
-        # updated_team = FullTeamModel(**await show_team(str(view.team.id), full=True))
-        # await view.msg_for_embed.edit(content=f'', embed=FullTeamEmbed(updated_team))
 
         # TODO: this is repetitive, and there needs to be a better way to do settings
         # settings: SettingsModel = inter.client.server_config

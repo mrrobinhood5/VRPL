@@ -50,3 +50,7 @@ class Carousel(View):
         """ override this for the embed type """
         # await inter.response.edit_message(embed=Embed(item), view=self)
         return NotImplemented
+
+    async def callback(self, inter: Interaction):
+        """ override this for the Update Button to work"""
+        return NotImplemented
