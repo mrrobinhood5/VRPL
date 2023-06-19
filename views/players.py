@@ -1,20 +1,23 @@
-from discord.ui import View, button, Button
-from discord import ButtonStyle, Interaction
+from typing import Optional
 
 from fastapi.exceptions import HTTPException
 
-from embeds.players import PlayerEmbed, PlayerRegisterEmbed
+from discord import ButtonStyle, Interaction
+from discord.ui import View, button, Button
+
+from routers.players import register_player, update_player, show_player
+from routers.admin import get_settings
+
+from views.buttons import UpdateButton
+from views.shared import Carousel
+
 from models.players import PlayerModel, UpdatePlayerModel
 from models.settings import SettingsModel
-from modals.players import PlayerRegisterModal, PlayerUpdateModal
-from routers.players import register_player
-from routers.admin import set_settings
 from models.errors import GenericErrorEmbed
-from views.buttons import UpdateButton, CounterButton, ControlButton
-from views.shared import Carousel
-from routers.players import update_player, show_player
 
-from typing import Optional
+from embeds.players import PlayerEmbed
+
+from modals.players import PlayerRegisterModal, PlayerUpdateModal
 
 
 async def process_player_update(inter: Interaction, player: UpdatePlayerModel):
@@ -22,8 +25,7 @@ async def process_player_update(inter: Interaction, player: UpdatePlayerModel):
     try:
         await update_player(str(inter.user.id), player)
     except HTTPException as e:
-        channel = inter.channel
-        await inter.client.get_channel(channel.id).send(embed=GenericErrorEmbed(inter.user, e))
+        await inter.channel.send(embed=GenericErrorEmbed(inter.user, e))
 
 
 class PlayerRegisterPersistent(View):
@@ -38,23 +40,12 @@ class PlayerRegisterPersistent(View):
         await inter.response.send_modal(modal)
         await modal.wait()
 
-        channel = inter.channel.id
         try:
             await register_player(self.updated_player)
             self.updated_player.discord_user = inter.user
-            await inter.client.get_channel(channel).send(content="**Player Registration**",
-                                                         embed=PlayerEmbed(self.updated_player))
-
-            # do the settings thing
-            settings: SettingsModel = inter.client.server_config
-            old_message = await inter.channel.fetch_message(settings.players_message)
-            await old_message.delete()
-            message = await inter.channel.send(embed=PlayerRegisterEmbed(), view=PlayerRegisterPersistent())
-            settings.players_message = message.id
-            await set_settings(settings)
-
+            await inter.channel.send(content="**Player Registration**", embed=PlayerEmbed(self.updated_player))
         except HTTPException as e:
-            await inter.client.get_channel(channel).send(embed=GenericErrorEmbed(inter.user, e), delete_after=10)
+            await inter.client.channel.send(embed=GenericErrorEmbed(inter.user, e), delete_after=10)
 
 
 class OwnPlayerView(View):
@@ -79,10 +70,12 @@ class OwnPlayerView(View):
 
     async def callback(self, inter: Interaction):
         await process_player_update(inter, self.updated_player) if self.updated_player else 0
-        if _ := inter.client.server_config.players_channel:
+        if settings := await get_settings():
+            settings = SettingsModel(**settings)
             updated_player = PlayerModel(**await show_player(str(inter.user.id)))
             updated_player.discord_user = inter.user
-            await inter.client.get_channel(_).send(content=f'**Player Update**', embed=PlayerEmbed(updated_player))
+            await inter.client.get_channel(settings.players_channel).send(content=f'**Player Update**',
+                                                                          embed=PlayerEmbed(updated_player))
         self.stop()
 
 
@@ -100,9 +93,10 @@ class PlayerCarousel(Carousel):
 
     async def callback(self, inter: Interaction):
         await process_player_update(inter, self.updated_player) if self.updated_player else 0
-        if _ := inter.client.server_config.players_channel:
+        if settings := await get_settings():
+            settings = SettingsModel(**settings)
             updated_player = PlayerModel(**await show_player(str(inter.user.id)))
             updated_player.discord_user = inter.user
-            await inter.client.get_channel(_).send(content=f'**Player Update**', embed=PlayerEmbed(updated_player))
+            await inter.client.get_channel(settings.players_channel).send(content=f'**Player Update**',
+                                                                          embed=PlayerEmbed(updated_player))
         self.stop()
-

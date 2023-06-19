@@ -8,7 +8,7 @@
 # from bson import ObjectId
 # from enum import Enum, auto
 #
-# # TODO i think passing all references by instance instead of ObjectID
+
 # @dataclass
 # class Tournament(Base):
 #     description: str

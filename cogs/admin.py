@@ -6,9 +6,12 @@ from discord import Object, HTTPException, app_commands, Interaction, TextChanne
 
 from embeds.players import PlayerRegisterEmbed
 from embeds.teams import TeamRegisterEmbed
-from routers.admin import drop_db, set_settings
+
+from routers.admin import drop_db, set_settings, get_settings
+
 from views.teams import TeamRegisterPersistent
 from views.players import PlayerRegisterPersistent
+
 from models.settings import SettingsModel
 
 
@@ -28,7 +31,10 @@ class AdminCommands(commands.Cog, name='Admin Commands'):
         """ Defines a Channel for the persistent Embed """
         await inter.response.send_message(f'Request Sent', ephemeral=True)
 
-        settings: SettingsModel = inter.client.server_config
+        if settings := await get_settings():
+            settings = SettingsModel(**settings)
+        else:
+            settings = SettingsModel(**{})
         _ = inter.client.get_channel(select.id)
 
         if channel == 'Player':

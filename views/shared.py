@@ -1,7 +1,10 @@
-from discord.ui import View, Modal
-from discord import Message, Interaction, Embed
-from models.base import Base
 from typing import Optional
+
+from discord import Message, Interaction
+from discord.ui import View, Modal
+
+from models.base import Base
+
 from views.buttons import ControlButton, CounterButton, UpdateButton
 
 

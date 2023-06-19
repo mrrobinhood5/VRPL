@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Body
 
-from database import db, db_get_settings, db_add_one
-from models.base import PyObjectId
 from models.settings import SettingsModel, UpdateSettingsModel
+
+from database import db, db_get_settings, db_add_one, db_update_one
 
 router = APIRouter(tags=['admin'], prefix='/admin')
 
@@ -24,6 +24,6 @@ async def get_settings():
 
 @router.put('/set_settings', response_description='Set the discord server settings', response_model=UpdateSettingsModel)
 async def set_settings(settings: SettingsModel = Body(...)):
-    settings.id = PyObjectId()
-    update = await db_add_one('settings', settings)
+
+    update = await db_update_one('settings', str(settings.id), settings.dict(exclude={'id'}))
     return update

@@ -1,6 +1,8 @@
-from models.base import Base, PyObjectId
 from pydantic import Field
+
 from typing import Optional
+
+from models.base import Base, PyObjectId
 
 
 class SettingsModel(Base):

@@ -1,7 +1,7 @@
 import os
 from discord import Intents
 
-# discord CONSTANTS
+
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 BOT_PREFIX = "."
 INTENTS = Intents(
@@ -10,11 +10,6 @@ INTENTS = Intents(
     typing=False, message_content=True)
 BOT_OWNER = os.getenv('BOT_OWNER')
 DEFAULT_LOGO = "https://i.imgur.com/d4SLqgD.png"
-
-# server SPECIFIC
-
-
-# daily quote
 QUOTES_URL = "https://zenquotes.io/api/random"
 
 cogs = os.listdir('./cogs')

@@ -3,8 +3,6 @@ from fastapi.responses import JSONResponse
 
 from models.players import PlayerModel, UpdatePlayerModel
 from models.teams import TeamModel
-from models.teamplayers import FullTeamModel
-from typing import Union
 
 from database import db_find_one_by_other, db_add_one, db_find_all, db_find_one, db_update_one, db_update_one_discord
 

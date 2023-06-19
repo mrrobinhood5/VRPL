@@ -1,8 +1,8 @@
 from pydantic import HttpUrl, Field
-from models.base import Base, PyObjectId
 
 from typing import Optional, Union
 
+from models.base import Base, PyObjectId
 
 
 class TeamModel(Base):

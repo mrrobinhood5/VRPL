@@ -1,19 +1,21 @@
-from discord.ui import Select, View, button, Button
-from discord import SelectOption, Interaction, ButtonStyle
 from typing import Optional
 
-from embeds.teamplayers import NewTeamEmbed
-from embeds.teams import TeamRegisterEmbed
-from models.teamplayers import FullTeamModel
-from models.teams import TeamModel
-from models.settings import SettingsModel
+from fastapi.exceptions import HTTPException
+
+from discord import SelectOption, Interaction, ButtonStyle
+from discord.ui import Select, View, button, Button
+
 from routers.players import show_player, get_player_team
 from routers.teams import list_teams, register_team, request_to_join_team, show_team
-from routers.admin import set_settings
-from fastapi.exceptions import HTTPException
-from modals.teams import TeamRegisterModal
+
+from models.teamplayers import FullTeamModel
+from models.teams import TeamModel
 from models.players import PlayerModel, PlayerTeamModel
 from models.errors import GenericErrorEmbed
+
+from embeds.teamplayers import NewTeamEmbed
+
+from modals.teams import TeamRegisterModal
 
 
 class TeamChooseDropdown(Select):
@@ -55,14 +57,6 @@ class TeamRegisterPersistent(View):
             self.updated_team = FullTeamModel(**await show_team(str(self.updated_team.id), full=True))
             await inter.channel.send(content="**New Team Registered**", embed=NewTeamEmbed(self.updated_team))
 
-            # do the settings thing
-            settings: SettingsModel = inter.client.server_config
-            old_message = await inter.channel.fetch_message(settings.teams_message)
-            await old_message.delete()
-            message = await inter.channel.send(embed=TeamRegisterEmbed(), view=TeamRegisterPersistent())
-            settings.teams_message = message.id
-            await set_settings(settings)
-
         except HTTPException as e:
             await inter.channel.send(embed=GenericErrorEmbed(inter.user, e), delete_after=10)
 
@@ -93,7 +87,7 @@ class TeamRegisterPersistent(View):
                 try:
                     await request_to_join_team(view.team_value[0], PlayerTeamModel(**{"player": player['_id']}))
                 except HTTPException as e:  # will error out if a similar request has been submitted
-                    inter.channel.send(embed=GenericErrorEmbed(inter.user, e))
+                    await inter.channel.send(embed=GenericErrorEmbed(inter.user, e))
             else:  # player already belongs to team
                 await inter.response.send_message(content=f'You already belong to {player_team["name"]}',
                                                   ephemeral=True)

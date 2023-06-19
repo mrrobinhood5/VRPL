@@ -1,5 +1,6 @@
-from discord.ui import Modal, TextInput, View
 from discord import Interaction
+
+from discord.ui import Modal, TextInput, View
 
 from models.players import PlayerModel, UpdatePlayerModel
 

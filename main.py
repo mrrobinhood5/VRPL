@@ -1,15 +1,18 @@
 import asyncio
-from fastapi import FastAPI
-
-from config import BOT_TOKEN, INTENTS, BOT_PREFIX, BOT_OWNER, cogs
-from discord.ext import commands
-from routers import players, teams, team_join_approvals, admin
-from views.players import PlayerRegisterPersistent
-from models.settings import SettingsModel
-from views.teams import TeamRegisterPersistent
-
 import discord
 import uvicorn
+
+from fastapi import FastAPI
+
+from discord.ext import commands
+
+from config import BOT_TOKEN, INTENTS, BOT_PREFIX, BOT_OWNER, cogs
+
+from routers import players, teams, team_join_approvals, admin
+
+from views.players import PlayerRegisterPersistent
+from views.teams import TeamRegisterPersistent
+
 
 app = FastAPI()
 bot = commands.Bot(command_prefix=BOT_PREFIX, description='VRPL Team Manager', intents=INTENTS)
@@ -45,9 +48,6 @@ async def on_ready():
     for cog in cogs:
         print(f'cogs.{cog[:-3]}')
         await bot.load_extension(f'cogs.{cog[:-3]}')
-    # LOAD DB SETTINGS HERE
-    server_config = await admin.get_settings()
-    bot.server_config = SettingsModel(**server_config)
 
 
 @bot.event

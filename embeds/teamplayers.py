@@ -29,7 +29,7 @@ class OwnTeamEmbed(FullTeamEmbed):
         self.add_field(name='Infractions', value=f'```Infractions Here```')
 
 
-class NewTeamEmbed(Embed):  # TODO: make this accept both a FullTeamModel or TeamModel
+class NewTeamEmbed(Embed):
 
     def __init__(self, team: Union[FullTeamModel, TeamModel]):
         super().__init__(title=team.name, description=team.team_motto)
@@ -39,6 +39,3 @@ class NewTeamEmbed(Embed):  # TODO: make this accept both a FullTeamModel or Tea
         self.set_footer(text=f'Active: {team.active}')
         self.add_field(name='MMR', value=f'```{team.team_mmr}```', inline=True)
         self.add_field(name='Captain', value=f'```{team.captain.name}```')
-
-
-

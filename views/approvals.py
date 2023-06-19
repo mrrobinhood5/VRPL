@@ -1,15 +1,23 @@
-from models.players import PlayerModel
 from typing import Optional
+
+from fastapi import HTTPException
+
 from discord import Interaction
-from views.shared import Carousel
-from embeds.players import PlayerEmbed
-from views.buttons import ApproveButton, RejectButton
+
 from routers.teams import approve_team_join, show_team
+from routers.admin import get_settings
+
+from models.players import PlayerModel
 from models.players import PlayerTeamFullModel, UpdatePlayerTeamModel
 from models.teamplayers import FullTeamModel
-from embeds.teamplayers import FullTeamEmbed
-from fastapi import HTTPException
 from models.errors import GenericErrorEmbed
+from models.settings import SettingsModel
+
+from views.shared import Carousel
+from views.buttons import ApproveButton, RejectButton
+
+from embeds.players import PlayerEmbed
+from embeds.teamplayers import FullTeamEmbed
 
 
 class TeamJoinsCarousel(Carousel):
@@ -31,9 +39,11 @@ class TeamJoinsCarousel(Carousel):
             try:
                 _ = UpdatePlayerTeamModel(**{'approved': True})
                 await approve_team_join(approval_id=str(self.item.id), request=_)
-                if _ := inter.client.server_config.teams_channel:
+                if settings := await get_settings():
+                    settings = SettingsModel(**settings)
                     updated_team = FullTeamModel(**await show_team(str(self.item.team.id), full=True))
-                    await inter.client.get_channel(_).send(content=f'', embed=FullTeamEmbed(updated_team))
+                    await inter.client.get_channel(settings.teams_channel).send(content=f'',
+                                                                                embed=FullTeamEmbed(updated_team))
             except HTTPException as e:
                 await inter.channel.send(embed=GenericErrorEmbed(inter.user, e))
         self.stop()

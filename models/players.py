@@ -1,5 +1,7 @@
 from pydantic import EmailStr, Field
+
 from typing import Optional, Any
+
 from models.base import Base, PyObjectId
 from models.teams import TeamModel
 

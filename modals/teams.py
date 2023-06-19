@@ -1,10 +1,11 @@
-from discord.ui import Modal, TextInput, View
 from discord import Interaction
+
+from discord.ui import Modal, TextInput, View
+
 from models.players import PlayerModel
 from models.teams import TeamModel, UpdateTeamModel
 
 
-# TODO inherit both TeamRegisterModal and PlayerRegisterModal
 class TeamRegisterModal(Modal, title='Register a Team'):
     team_name = TextInput(label='Team Name', custom_id='name', placeholder='New Team Name', required=True)
     team_motto = TextInput(label='Team Motto', custom_id='team_motto', placeholder='Team Motto', required=True)

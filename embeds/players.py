@@ -1,4 +1,5 @@
 from discord import Embed, Color
+
 from config import DEFAULT_LOGO
 
 from models.players import PlayerModel

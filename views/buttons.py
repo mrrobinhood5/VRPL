@@ -1,6 +1,7 @@
-from discord.ui import Button, Modal
-from discord import ButtonStyle, Interaction
 from typing import Optional, Literal
+
+from discord import ButtonStyle, Interaction
+from discord.ui import Button, Modal
 
 
 class ControlButton(Button):
@@ -13,7 +14,8 @@ class ControlButton(Button):
         super().__init__(custom_id=custom_id, label=label, style=ButtonStyle.green)
 
     async def callback(self, inter: Interaction):
-        if self.view.is_mine(inter, item := next(self.view.next_item if self.custom_id == 'next' else self.view.prev_item)):
+        if self.view.is_mine(inter, item := next(self.view.next_item if self.custom_id == 'next'
+                                                 else self.view.prev_item)):
             self.view.update.disabled = False
         else:
             self.view.update.disabled = True

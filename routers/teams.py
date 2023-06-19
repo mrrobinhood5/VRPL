@@ -1,12 +1,16 @@
 from fastapi import APIRouter
+from fastapi import Body, HTTPException, status
+from fastapi.responses import JSONResponse
+
+from typing import Union
+
+from routers.players import show_player
+
 from models.teams import TeamModel, UpdateTeamModel
 from models.teamplayers import FullTeamModel
 from models.players import PlayerTeamModel, PlayerModel, UpdatePlayerTeamModel, PlayerTeamFullModel
-from routers.players import show_player
-from fastapi import Body, HTTPException, status
-from typing import Union
-from fastapi.responses import JSONResponse
-from database import db_delete_one, db_count_items, db_find_some, db_add_one, db_find_all, db_find_one, db_update_one
+
+from database import db_delete_one_by_other, db_count_items, db_find_some, db_add_one, db_find_all, db_find_one, db_update_one
 
 router = APIRouter(tags=['teams'], prefix='/teams')
 
@@ -134,9 +138,9 @@ async def approve_team_join(approval_id: str, request: UpdatePlayerTeamModel = B
 @router.delete("/remove/player/{player_id}", response_description="Remove a Player from Team",
                tags=['players'])
 async def remove_player(player_id: str):
-    delete_result = await db_delete_one('player_team_link', player_id)
+    delete_result = await db_delete_one_by_other('player_team_link', {'player': player_id})
     if delete_result.deleted_count == 1:
-        return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=delete_result)
+        return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content='OK')
     raise HTTPException(status_code=404, detail=f'Player {player_id} not found')
 
 
