@@ -12,6 +12,7 @@ from views.players import PlayerCarousel, OwnPlayerView
 
 from embeds.players import PlayerEmbed, SelfPlayerEmbed
 
+#  TODO: ability to leave a team
 
 class PlayerCommands(commands.GroupCog, name='players'):
 

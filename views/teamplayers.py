@@ -68,6 +68,8 @@ class MemberChooseView(View):
         self.add_item(MemberChooseDropDown(options=options))
         self.chosen_value = None
 
+#  todo: Ownteam view click update, and the team updates do not process
+# todo: dismantle team command
 
 class TeamCarousel(Carousel):
     def __init__(self, items: Optional[list[FullTeamModel]]):

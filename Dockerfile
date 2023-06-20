@@ -13,4 +13,4 @@ EXPOSE 8080
 
 COPY . .
 
-CMD [ "python", "main.py" ]
+CMD [ "python3", "main.py" ]
