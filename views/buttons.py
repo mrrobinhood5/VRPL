@@ -33,7 +33,7 @@ class UpdateButton(Button):
         await inter.response.send_modal(self.modal)
         await self.modal.wait()
         await self.view.callback(inter)
-        self.view.stop()
+
 
 
 class CounterButton(Button):

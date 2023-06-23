@@ -24,6 +24,14 @@ async def process_player_update(inter: Interaction, player: UpdatePlayerModel):
     """ Helper function to process any player updates """
     try:
         await update_player(str(inter.user.id), player)
+
+        if settings := await get_settings():
+            settings = SettingsModel(**settings)
+            updated_player = PlayerModel(**await show_player(str(inter.user.id)))
+            updated_player.discord_user = inter.user
+            await inter.client.get_channel(settings.players_channel).send(content=f'**Player Update**',
+                                                                          embed=PlayerEmbed(updated_player))
+
     except HTTPException as e:
         await inter.channel.send(embed=GenericErrorEmbed(inter.user, e))
 
@@ -70,12 +78,6 @@ class OwnPlayerView(View):
 
     async def callback(self, inter: Interaction):
         await process_player_update(inter, self.updated_player) if self.updated_player else 0
-        if settings := await get_settings():
-            settings = SettingsModel(**settings)
-            updated_player = PlayerModel(**await show_player(str(inter.user.id)))
-            updated_player.discord_user = inter.user
-            await inter.client.get_channel(settings.players_channel).send(content=f'**Player Update**',
-                                                                          embed=PlayerEmbed(updated_player))
         self.stop()
 
 
@@ -93,10 +95,4 @@ class PlayerCarousel(Carousel):
 
     async def callback(self, inter: Interaction):
         await process_player_update(inter, self.updated_player) if self.updated_player else 0
-        if settings := await get_settings():
-            settings = SettingsModel(**settings)
-            updated_player = PlayerModel(**await show_player(str(inter.user.id)))
-            updated_player.discord_user = inter.user
-            await inter.client.get_channel(settings.players_channel).send(content=f'**Player Update**',
-                                                                          embed=PlayerEmbed(updated_player))
         self.stop()

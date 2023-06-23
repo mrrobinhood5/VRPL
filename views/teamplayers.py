@@ -26,13 +26,15 @@ from embeds.players import PlayerEmbed
 
 async def process_team_update(inter: Interaction, team_id: str, team: UpdateTeamModel):
     """ helper function to send updates of teams """
+
     try:
         await update_team(team_id, team)
 
         if settings := await get_settings():
             settings = SettingsModel(**settings)
             updated_team = FullTeamModel(**await show_team(str(team_id), full=True))
-            await inter.client.get_channel(settings.teams_channel).send(content=f'', embed=FullTeamEmbed(updated_team))
+            await inter.client.get_channel(settings.teams_channel).send(content=f'**Team Update**',
+                                                                        embed=FullTeamEmbed(updated_team))
 
     except HTTPException as e:
         await inter.channel.send(embed=GenericErrorEmbed(inter.user, e))
@@ -68,12 +70,11 @@ class MemberChooseView(View):
         self.add_item(MemberChooseDropDown(options=options))
         self.chosen_value = None
 
-#  todo: Ownteam view click update, and the team updates do not process
 # todo: dismantle team command
 
 class TeamCarousel(Carousel):
     def __init__(self, items: Optional[list[FullTeamModel]]):
-        super().__init__(items=items, modal=TeamUpdateModal(self))
+        super().__init__(items=items, modal=TeamUpdateModal(view=self))
 
     @staticmethod
     def is_mine(inter: Interaction, team: FullTeamModel) -> bool:
@@ -99,7 +100,7 @@ class OwnTeamView(View):
         self.update = UpdateButton(TeamUpdateModal(view=self))
         self.add_item(self.update)
         self.team = team
-        self.updated_team: Optional[UpdateTeamModel] = None
+        self.updated_item: Optional[UpdateTeamModel] = None
         self.msg_for_embed: Optional[Message] = None
 
     async def finish_off_view(self, inter: Interaction, view: View):
@@ -120,7 +121,7 @@ class OwnTeamView(View):
             await view.wait()
         else:
             await inter.response.send_message(content=f'There are no pending Approvals', delete_after=10)
-        self.stop()
+        await self.finish_off_view(inter, view)
 
     @button(label='Remove Player', style=ButtonStyle.danger, disabled=False)
     async def remove_player(self, inter: Interaction, button: Button):
@@ -154,5 +155,5 @@ class OwnTeamView(View):
             return True
 
     async def callback(self, inter: Interaction):
-        await process_team_update(inter, str(self.team.id), self.updated_team) if self.updated_team else 0
+        await process_team_update(inter, str(self.team.id), self.updated_item) if self.updated_item else 0
         self.stop()

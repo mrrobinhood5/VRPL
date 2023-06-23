@@ -83,11 +83,16 @@ class TeamRegisterPersistent(View):
                 view.clear_items()
                 msg = await inter.original_response()
                 await msg.edit(content=f'Request Sent!', view=view)
-
                 try:
                     await request_to_join_team(view.team_value[0], PlayerTeamModel(**{"player": player['_id']}))
                 except HTTPException as e:  # will error out if a similar request has been submitted
                     await inter.channel.send(embed=GenericErrorEmbed(inter.user, e))
+#  TODO: should TeamModel.discord_id be stored as int?
+                # Send DM to both captain and co-captain
+                team = FullTeamModel(**await show_team(view.team_value[0], full=True))
+                await inter.guild.get_member(int(team.captain.discord_id)).send(f'{inter.user.name} requested to join your team. use `/team my_team` to approve this')
+                if team.co_captain:
+                    await inter.guild.get_member(int(team.co_captain.discord_id)).send(f'{inter.user.name} requested to join your team. use `/team my_team` to approve this')
             else:  # player already belongs to team
                 await inter.response.send_message(content=f'You already belong to {player_team["name"]}',
                                                   ephemeral=True)
