@@ -9,6 +9,15 @@ class FullTeamModel(TeamModel):
     co_captain: Optional[PlayerModel]
     members: list[PlayerModel]
 
+    @property
+    def captain_discord_id(self):
+        return self.captain.discord_id
+
+    @property
+    def co_captain_discord_id(self):
+        return None if not self.co_captain else self.co_captain.discord_id
+
+
     class Config:
         schema_extra = {
             "example": {
@@ -20,14 +29,14 @@ class FullTeamModel(TeamModel):
                 "captain": {
                     "_id": "abc123456789",
                     "name": "captain name",
-                    "discord_id": "987654321",
+                    "discord_id": 1234567890,
                     "game_uid": "abc123abc123",
                     "calibrated_height": "72 in"
                 },
                 "co_captain": {
                     "_id": "abc123456789",
                     "name": "captain name",
-                    "discord_id": "987654321",
+                    "discord_id": 1234567891,
                     "game_uid": "abc123abc123",
                     "calibrated_height": "72 in"
                 },
@@ -35,14 +44,14 @@ class FullTeamModel(TeamModel):
                     {
                         "_id": "abc123456789",
                         "name": "captain name",
-                        "discord_id": "987654321",
+                        "discord_id": 1234567890,
                         "game_uid": "abc123abc123",
                         "calibrated_height": "72 in"
                     },
                     {
                         "_id": "abc123456789",
                         "name": "captain name",
-                        "discord_id": "987654321",
+                        "discord_id": 1234567890,
                         "game_uid": "abc123abc123",
                         "calibrated_height": "72 in"
                     }

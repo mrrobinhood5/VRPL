@@ -19,7 +19,7 @@ class PlayerRegisterModal(Modal, title='Register a Player'):
     async def on_submit(self, inter: Interaction) -> None:
         new_player = {
             "name": inter.user.name,
-            "discord_id": str(inter.user.id),
+            "discord_id": inter.user.id,
             "game_uid": self.game_uid.value,
             "calibrated_height": self.calibrated_height.value,
             "promo_email": self.promo_email.value or None

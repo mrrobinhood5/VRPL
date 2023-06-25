@@ -14,6 +14,7 @@ from database import db_delete_one_by_other, db_count_items, db_find_some, db_ad
 
 router = APIRouter(tags=['teams'], prefix='/teams')
 
+#TODO: every call to a router needs to be in a try/except block
 
 async def build_full_team_helper(team: dict) -> dict:
     team['captain'] = await show_player(team['captain'])
@@ -91,6 +92,18 @@ async def update_team(team_id: str, team: UpdateTeamModel = Body(...)):
     if (existing_team := await db_find_one('teams', team_id)) is not None:
         return existing_team
     raise HTTPException(status_code=404, detail=f"Team {team_id} not found")
+
+
+@router.put('/{team_id}', response_description='Remove Co-Captain', response_model=TeamModel)
+async def remove_co_captain(team_id: str):
+    """ Removes the Co-Captain Only because passing an empty co_captain to update_team fails """
+    team_update = {"co_captain": None}
+    update_result = await db_update_one('teams', team_id, team_update)
+    if update_result.modified_count == 1:
+        if (updated_team := await db_find_one('team', team_id)) is not None:
+            return updated_team
+    else:
+        raise HTTPException(status_code=404, detail=f'Team {team_id} not found')
 
 
 @router.get("/{team_id}/players", response_description="List all Players in a Team", response_model=list[PlayerModel],

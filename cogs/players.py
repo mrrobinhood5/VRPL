@@ -12,8 +12,6 @@ from views.players import PlayerCarousel, OwnPlayerView
 
 from embeds.players import PlayerEmbed, SelfPlayerEmbed
 
-#  TODO: ability to leave a team
-
 class PlayerCommands(commands.GroupCog, name='players'):
 
     def __init__(self, bot: commands.Bot) -> None:
@@ -25,10 +23,12 @@ class PlayerCommands(commands.GroupCog, name='players'):
         """ Views all Players """
         await inter.response.defer(ephemeral=True)
         players = await list_players()
-        for player in players:
-            user = inter.client.get_user(int(player['discord_id']))
-            player['discord_user'] = user
+        # for player in players:
+        #     user = inter.client.get_user(player['discord_id'])
+        #     player['discord_user'] = user
         players = [PlayerModel(**player) for player in players]
+        for player in players:
+            player.discord_user = inter.client.get_user(player.discord_id)
         view = PlayerCarousel(players)
         await inter.followup.send(embed=PlayerEmbed(players[0]), view=view)
 
@@ -39,11 +39,12 @@ class PlayerCommands(commands.GroupCog, name='players'):
         """ Displays your own player """
         await inter.response.defer(ephemeral=True)
         try:
-            me = await show_player(str(inter.user.id))
+            me = await show_player(inter.user.id)
             me = PlayerModel(**me)
             me.discord_user = inter.user
             view = OwnPlayerView(me)
             await inter.followup.send(embed=SelfPlayerEmbed(me), view=view)
+            await inter.response.edit_
             await view.wait()
         except HTTPException as e:
             await inter.followup.send(embed=GenericErrorEmbed(inter.user, e))
@@ -56,7 +57,7 @@ class PlayerCommands(commands.GroupCog, name='players'):
         players = []
         for player in player_list:
             p = PlayerModel(**player)
-            p.discord_user = inter.client.get_user(int(p.discord_id))
+            p.discord_user = inter.client.get_user(p.discord_id)
             players.append(p)
         if not players:
             await inter.followup.send(f'No results found')

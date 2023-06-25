@@ -60,7 +60,7 @@ async def db_update_one(name: str, obj_id: str, obj: dict) -> Optional[dict]:
     return result
 
 
-async def db_update_one_discord(name: str, obj_id: str, obj: dict) -> Optional[dict]:
+async def db_update_one_discord(name: str, obj_id: int, obj: dict) -> Optional[dict]:
     obj = jsonable_encoder(obj)
     result = await db[name].update_one({'discord_id': obj_id}, {'$set': obj})
     return result

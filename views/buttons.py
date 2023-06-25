@@ -27,7 +27,7 @@ class UpdateButton(Button):
 
     def __init__(self, modal: Modal, disabled: Optional[bool] = False):
         self.modal = modal
-        super().__init__(custom_id='update', label='Update', style=ButtonStyle.blurple, disabled=disabled)
+        super().__init__(custom_id='update', label='Update', style=ButtonStyle.blurple, disabled=disabled, row=2)
 
     async def callback(self, inter: Interaction):
         await inter.response.send_modal(self.modal)
@@ -66,3 +66,5 @@ class RejectButton(Button):
         self.view.approval = False
         await self.view.callback(inter)
         self.view.stop()
+
+

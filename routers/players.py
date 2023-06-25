@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Body, HTTPException, status
 from fastapi.responses import JSONResponse
 
+from typing import Union
+
 from models.players import PlayerModel, UpdatePlayerModel
 from models.teams import TeamModel
 
@@ -45,7 +47,7 @@ async def get_player_team(player_id: str) -> dict:
 
 
 @router.get("/{player_id}", response_description="Get a single player", response_model=PlayerModel)
-async def show_player(player_id: str) -> dict:
+async def show_player(player_id: Union[str, int]) -> dict:
     """ To retrieve a single player, send in just the ObjectID for the player. You can also send in the Discord ID """
     if (player := await db_find_one("players", player_id)) is not None:
         return player
@@ -55,7 +57,7 @@ async def show_player(player_id: str) -> dict:
 
 
 @router.put("/{player_id}", response_description="Update a player", response_model=PlayerModel)
-async def update_player(player_id: str, player: UpdatePlayerModel = Body(...)):
+async def update_player(player_id: Union[str, int], player: UpdatePlayerModel = Body(...)):
     """ Updatable fields are:
     ```"name": "If you are planning on changing the in-game name",
     "email": "to make email updates",

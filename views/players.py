@@ -23,11 +23,11 @@ from modals.players import PlayerRegisterModal, PlayerUpdateModal
 async def process_player_update(inter: Interaction, player: UpdatePlayerModel):
     """ Helper function to process any player updates """
     try:
-        await update_player(str(inter.user.id), player)
+        await update_player(inter.user.id, player)
 
         if settings := await get_settings():
             settings = SettingsModel(**settings)
-            updated_player = PlayerModel(**await show_player(str(inter.user.id)))
+            updated_player = PlayerModel(**await show_player(inter.user.id))
             updated_player.discord_user = inter.user
             await inter.client.get_channel(settings.players_channel).send(content=f'**Player Update**',
                                                                           embed=PlayerEmbed(updated_player))
@@ -88,7 +88,7 @@ class PlayerCarousel(Carousel):
 
     @staticmethod
     def is_mine(inter: Interaction, player: PlayerModel) -> bool:
-        return str(inter.user.id) == player.discord_id
+        return inter.user.id == player.discord_id
 
     async def update_view(self, inter: Interaction, item: PlayerModel):
         await inter.response.edit_message(embed=PlayerEmbed(item), view=self)

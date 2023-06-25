@@ -8,7 +8,7 @@ from models.teams import TeamModel
 
 class PlayerModel(Base):
     id: PyObjectId = Field(default_factory=PyObjectId, alias='_id')
-    discord_id: str
+    discord_id: int
     game_uid: str
     calibrated_height: str
     promo_email: Optional[EmailStr]
@@ -23,7 +23,7 @@ class PlayerModel(Base):
         schema_extra = {
             "example": {
                 "name": "MrRobinhood5",
-                "discord_id": "abc123456789",
+                "discord_id": 23456789123456789,
                 "game_uid": "1234567890",
                 "calibrated_height": "5ft 6in",
             }
