@@ -44,7 +44,7 @@ class TeamRegisterPersistent(View):
     @button(label='Register a Team', style=ButtonStyle.green, custom_id='team:register')
     async def register(self, inter: Interaction, button: Button):
         try:
-            captain = await show_player(str(inter.user.id))
+            captain = await show_player(inter.user.id)
         except HTTPException as e:
             await inter.channel.send(embed=GenericErrorEmbed(inter.user, e), delete_after=10)  # "not registered" error
 
@@ -63,12 +63,12 @@ class TeamRegisterPersistent(View):
     @button(label="Join a Team", style=ButtonStyle.blurple, custom_id='team:join')
     async def join(self, inter: Interaction, button: Button):
         try:  # check to see if you are registered
-            player = await show_player(str(inter.user.id))
+            player = await show_player(inter.user.id)
         except HTTPException as e:
             await inter.response.channel.send(embed=GenericErrorEmbed(inter.user, e))
         else:
             try:  # check to see if this player does not already belong to a team
-                player_team = await get_player_team(str(inter.user.id))
+                player_team = await get_player_team(inter.user.id)
             except HTTPException as e:  # doesn't belong to team
                 teams = await list_teams()
                 teams = [TeamModel(**team) for team in teams]
@@ -87,12 +87,12 @@ class TeamRegisterPersistent(View):
                     await request_to_join_team(view.team_value[0], PlayerTeamModel(**{"player": player['_id']}))
                 except HTTPException as e:  # will error out if a similar request has been submitted
                     await inter.channel.send(embed=GenericErrorEmbed(inter.user, e))
-#  TODO: should TeamModel.discord_id be stored as int?
+
                 # Send DM to both captain and co-captain
                 team = FullTeamModel(**await show_team(view.team_value[0], full=True))
-                await inter.guild.get_member(int(team.captain.discord_id)).send(f'{inter.user.name} requested to join your team. use `/team my_team` to approve this')
+                await inter.guild.get_member(team.captain.discord_id).send(f'{inter.user.name} requested to join your team. use `/team my_team` to approve this')
                 if team.co_captain:
-                    await inter.guild.get_member(int(team.co_captain.discord_id)).send(f'{inter.user.name} requested to join your team. use `/team my_team` to approve this')
+                    await inter.guild.get_member(team.co_captain.discord_id).send(f'{inter.user.name} requested to join your team. use `/team my_team` to approve this')
             else:  # player already belongs to team
                 await inter.response.send_message(content=f'You already belong to {player_team["name"]}',
                                                   ephemeral=True)

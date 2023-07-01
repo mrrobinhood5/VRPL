@@ -3,6 +3,7 @@ from typing import Optional
 from fastapi import HTTPException
 
 from discord import Interaction
+from discord.ui import View
 
 from routers.teams import approve_team_join, show_team
 from routers.admin import get_settings
@@ -46,4 +47,17 @@ class TeamJoinsCarousel(Carousel):
                                                                                 embed=FullTeamEmbed(updated_team))
             except HTTPException as e:
                 await inter.channel.send(embed=GenericErrorEmbed(inter.user, e))
+            self.stop()
+        self.stop()
+
+
+class ConfirmationView(View):
+
+    def __init__(self):
+        self.approval = None
+        super().__init__()
+        self.add_item(ApproveButton(label="Yes"))
+        self.add_item(RejectButton(label="No"))
+
+    async def callback(self, inter: Interaction):
         self.stop()

@@ -185,3 +185,12 @@ async def list_pending_approvals(team_id: str, full: bool = False):
             result['player'] = await show_player(result['player'])
             result['team'] = await show_team(result['team'])
     return results
+
+
+@router.delete("/remove/{team_id}", response_description="Remove a Team",
+               tags=['teams'])
+async def remove_team(team_id: str):
+    delete_result = await db_delete_one_by_other('teams', {'_id': team_id})
+    if delete_result.deleted_count == 1:
+        return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content='OK')
+    raise HTTPException(status_code=404, detail=f'Team {team_id} not found')

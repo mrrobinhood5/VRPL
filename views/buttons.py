@@ -1,6 +1,6 @@
 from typing import Optional, Literal
 
-from discord import ButtonStyle, Interaction
+from discord import ButtonStyle, Interaction, Object
 from discord.ui import Button, Modal
 
 
@@ -48,23 +48,26 @@ class CounterButton(Button):
 
 class ApproveButton(Button):
 
-    def __init__(self):
-        super().__init__(custom_id='approve', label='Approve', style=ButtonStyle.green)
+    def __init__(self, label: Optional[str]):
+        self._ = label or 'Approve'
+        super().__init__(custom_id='approve', label=self._, style=ButtonStyle.green)
 
     async def callback(self, inter: Interaction):
         self.view.approval = True
-        await self.view.callback(inter)
-        self.view.stop()
+        inter = inter if inter else Object(id="1234")
+        await self.view.callback(inter) if inter else await self.view.callback()
+        # self.view.stop()
 
 
 class RejectButton(Button):
 
-    def __init__(self):
-        super().__init__(custom_id='reject', label='Reject', style=ButtonStyle.danger)
+    def __init__(self, label: Optional[str]):
+        self._ = label or 'Reject'
+        super().__init__(custom_id='reject', label=self._, style=ButtonStyle.danger)
 
     async def callback(self, inter: Interaction):
         self.view.approval = False
-        await self.view.callback(inter)
-        self.view.stop()
+        await self.view.callback(inter) if inter else await self.view.callback()
 
+        # self.view.stop()
 

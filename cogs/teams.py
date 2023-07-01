@@ -73,5 +73,6 @@ class TeamCommands(commands.GroupCog, name='teams'):
         await view.wait()
 
 
+
 async def setup(bot: commands.Bot):
     await bot.add_cog(TeamCommands(bot))

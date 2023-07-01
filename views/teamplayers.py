@@ -5,6 +5,7 @@ from discord.ui import View, button, Button, Select
 
 from fastapi import HTTPException
 
+import views.approvals
 from embeds.players import PlayerEmbed
 from models.players import PlayerTeamFullModel
 from routers.admin import get_settings
@@ -14,7 +15,7 @@ from models.teamplayers import FullTeamModel
 from models.teams import UpdateTeamModel
 from models.settings import SettingsModel
 from models.errors import GenericErrorEmbed
-from views.approvals import TeamJoinsCarousel
+from views.approvals import TeamJoinsCarousel, ConfirmationView
 
 from views.buttons import UpdateButton
 from views.shared import Carousel
@@ -111,7 +112,18 @@ class OwnTeamPlayerView(View):
         self.stop()
 
     @button(label='Leave Team', style=ButtonStyle.danger, disabled=False, row=3)
-    async def leave_team(self, inter: Interaction, button: Button):  # TODO: add confirmation
+    async def leave_team(self, inter: Interaction, button: Button):
+        # send a new msg for confirmation
+        await inter.response.defer()
+
+        confirmation = ConfirmationView()
+        msg = await inter.channel.send(content="Are you Sure?", view=confirmation)
+        await confirmation.wait()
+        await msg.delete()
+        if not confirmation.approval:
+            self.stop()
+            return
+
         me = [player.id for player in self.team.members if player.discord_id == inter.user.id][0]
         await remove_player(str(me))
         if inter.user.id == self.team.co_captain_discord_id:
@@ -129,7 +141,7 @@ class OwnTeamCoCaptainView(OwnTeamPlayerView):
         self.update = self.add_item(UpdateButton(modal=TeamUpdateModal(self)))
 
     @button(custom_id='approve_joins', label='Approve Joins', style=ButtonStyle.green, row=2)
-    async def approve_joins(self, inter: Interaction):
+    async def approve_joins(self, inter: Interaction, button: Button):
         approvals = await list_pending_approvals(str(self.team.id), full=True)
         if approvals:
             approvals = [PlayerTeamFullModel(**approval) for approval in approvals]
@@ -143,7 +155,7 @@ class OwnTeamCoCaptainView(OwnTeamPlayerView):
         await self.finish_off_view(inter)
 
     @button(label='Remove Player', style=ButtonStyle.danger, disabled=False, row=2)
-    async def remove_player(self, inter: Interaction):
+    async def remove_player(self, inter: Interaction, button: Button):
         options = [SelectOption(label=member.name, value=f'{member.name}:{str(member.id)}')
                    for member in self.team.members if member.id != self.team.captain.id]
         view = MemberChooseView(options=options, team=self.team, choose_type='remove')
@@ -182,10 +194,18 @@ class OwnTeamCaptainView(OwnTeamCoCaptainView):
         await self.finish_off_view(inter)
 
     @button(label='Disband Team', style=ButtonStyle.danger, disabled=False, row=1)
-    async def dismantle_team(self, inter: Interaction, button: Button):  # TODO: finish Dismantle Team Button
-        # only captain can do this.
+    async def dismantle_team(self, inter: Interaction, button: Button):
+        await inter.response.defer()
 
-        # destroy all players links
+        confirmation = ConfirmationView()
+        msg = await inter.channel.send(content="Are you Sure?", view=confirmation)
+        await confirmation.wait()
+        await msg.delete()
+        if not confirmation.approval:
+            self.stop()
+            return
 
-        # destroy the TeamModel
-        pass
+        for player in self.team.members:
+            await remove_player(str(player.id))
+
+        await inter.response.send(f"Team {self.team.name} has been dismantled.")
