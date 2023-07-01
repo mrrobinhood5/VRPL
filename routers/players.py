@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body, HTTPException, status
+from fastapi import APIRouter, Body, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
 
 from typing import Union
@@ -7,12 +7,13 @@ from models.players import PlayerModel, UpdatePlayerModel
 from models.teams import TeamModel
 
 from database import db_find_one_by_other, db_add_one, db_find_all, db_find_one, db_update_one, db_update_one_discord
+from routers.discord_oauth import discord
 
 router = APIRouter(tags=['players'], prefix='/players')
 
 
 @router.post("/register", response_description="Register a new Player",
-             response_model=PlayerModel)
+             response_model=PlayerModel, dependencies=[Depends(discord.requires_authorization)])
 async def register_player(player: PlayerModel = Body(...)):
     """ To register a Player, you only need to send in
     ```"name" : "Chosen Name to be used in-game",

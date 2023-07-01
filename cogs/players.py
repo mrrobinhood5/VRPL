@@ -12,6 +12,7 @@ from views.players import PlayerCarousel, OwnPlayerView
 
 from embeds.players import PlayerEmbed, SelfPlayerEmbed
 
+#  TODO: an registered player looking for a my_team errors out
 class PlayerCommands(commands.GroupCog, name='players'):
 
     def __init__(self, bot: commands.Bot) -> None:
@@ -23,9 +24,6 @@ class PlayerCommands(commands.GroupCog, name='players'):
         """ Views all Players """
         await inter.response.defer(ephemeral=True)
         players = await list_players()
-        # for player in players:
-        #     user = inter.client.get_user(player['discord_id'])
-        #     player['discord_user'] = user
         players = [PlayerModel(**player) for player in players]
         for player in players:
             player.discord_user = inter.client.get_user(player.discord_id)

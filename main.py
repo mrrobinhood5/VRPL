@@ -8,7 +8,7 @@ from discord.ext import commands
 
 from config import BOT_TOKEN, INTENTS, BOT_PREFIX, BOT_OWNER, cogs
 
-from routers import players, teams, team_join_approvals, admin
+from routers import players, teams, team_join_approvals, admin, discord_oauth
 
 from views.players import PlayerRegisterPersistent
 from views.teams import TeamRegisterPersistent
@@ -24,6 +24,7 @@ app.include_router(players.router)
 app.include_router(teams.router)
 app.include_router(team_join_approvals.router)
 app.include_router(admin.router)
+app.include_router(discord_oauth.router)
 
 
 @app.get('/')
