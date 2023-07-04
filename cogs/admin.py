@@ -3,16 +3,8 @@ from typing import Optional, Literal
 from discord.ext import commands
 from discord.ext.commands import Context, Greedy
 from discord import Object, HTTPException, app_commands, Interaction, TextChannel
-
-from embeds.players import PlayerRegisterEmbed
-from embeds.teams import TeamRegisterEmbed
-
-from routers.admin import drop_db, set_settings, get_settings
-
-from views.teams import TeamRegisterPersistent
-from views.players import PlayerRegisterPersistent
-
-from models.settings import SettingsModel
+from models.teams import TeamRegisterPersistent
+from models.players import PlayerRegisterPersistent
 
 
 async def is_server_owner(ctx):
@@ -30,27 +22,34 @@ class AdminCommands(commands.Cog, name='Admin Commands'):
     async def config_channels(self, inter: Interaction, channel: Literal['Player', 'Team'], select: TextChannel):
         """ Defines a Channel for the persistent Embed """
         await inter.response.send_message(f'Request Sent', ephemeral=True)
-
-        if settings := await get_settings():
-            settings = SettingsModel(**settings)
-        else:
-            settings = SettingsModel(**{})
-        _ = inter.client.get_channel(select.id)
+        settings = inter.client.settings
+        await settings.get_messages()
 
         if channel == 'Player':
-            settings.players_channel = select.id
-            message = await _.send(embed=PlayerRegisterEmbed(), view=PlayerRegisterPersistent())
-            settings.players_message = message.id
-        else:
-            settings.teams_channel = select.id
-            message = await _.send(embed=TeamRegisterEmbed(), view=TeamRegisterPersistent())
-            settings.teams_message = message.id
-        await set_settings(settings)
+            if settings.players_message:
+                await settings.players_message.delete()
+            settings.players_channel_id = select.id
+            settings.players_channel = select
+            persistent = PlayerRegisterPersistent()
+            settings.players_message = await select.send(embed=persistent.embed(), view=persistent)
+            settings.players_message_id = settings.players_message.id
+
+        if channel == 'Team':
+            if settings.teams_message:
+                await settings.teams_message.delete()
+            settings.teams_channel_id = select.id
+            settings.teams_channel = select
+            persistent = TeamRegisterPersistent()
+            settings.teams_message = await select.send(embed=persistent.embed(), view=persistent)
+            settings.teams_message_id = settings.teams_message.id
+
+        settings.save()
 
     @commands.command(name='drop_db')
     @commands.is_owner()
     async def drop_db(self, ctx: Context):
-        await drop_db()
+        for collection in ctx.bot.db.list_collections:
+            collection.drop()
         await ctx.reply(content='Dropped all the DBs, your honor.')
 
     @app_commands.command(name='purge')

@@ -1,29 +1,23 @@
 from discord import Client, TextChannel, Message, Embed
 from discord.ext import tasks, commands
 from discord.ui import View
+from custom import VRPLBot
 
-from routers.admin import get_settings, set_settings
-
-from models.settings import SettingsModel
-
-from views.players import PlayerRegisterPersistent
-from views.teams import TeamRegisterPersistent
-
-from embeds.players import PlayerRegisterEmbed
-from embeds.teams import TeamRegisterEmbed
+from models.players import PlayerRegisterPersistent
+from models.teams import TeamRegisterPersistent
 
 
-async def process_messages(s_channel: TextChannel, s_message: Message, embed: Embed, view: View) -> Message:
-    async for last_message in s_channel.history(limit=1):
-        if last_message != s_message:
-            await s_message.delete()
-            new_message = await s_channel.send(embed=embed, view=view)
+async def process_messages(channel: TextChannel, message: Message, embed: Embed, view: View) -> Message:
+    async for last_message in channel.history(limit=1):
+        if last_message != message:
+            await message.delete()
+            new_message = await channel.send(embed=embed, view=view)
             return new_message
 
 
 class HelperTasks(commands.Cog):
     def __init__(self, bot):
-        self.bot: Client = bot
+        self.bot: VRPLBot = bot
         self.reposter.start()
 
     def cog_unload(self) -> None:
@@ -31,22 +25,18 @@ class HelperTasks(commands.Cog):
 
     @tasks.loop(hours=24)
     async def reposter(self):
-        settings = SettingsModel(**await get_settings())
+        if channel := self.bot.settings.teams_channel:
+            if message := await channel.fetch_message(self.bot.settings.teams_message_id):
+                persistent = TeamRegisterPersistent()
+                if new_message := await process_messages(channel, message, persistent.embed(), persistent):
+                    self.bot.settings.teams_message_id = new_message.id
 
-        if settings.teams_channel:
-            s_channel = self.bot.get_channel(settings.teams_channel)
-            if s_message := await s_channel.fetch_message(settings.teams_message):
-                if new_message := await process_messages(s_channel, s_message, TeamRegisterEmbed(),
-                                                         TeamRegisterPersistent()):
-                    settings.teams_message = new_message.id
-
-        if settings.players_channel:
-            channel = self.bot.get_channel(settings.players_channel)
-            if s_message := await channel.fetch_message(settings.players_message):
-                if new_msg := await process_messages(channel, s_message, PlayerRegisterEmbed(),
-                                                     PlayerRegisterPersistent()):
-                    settings.players_message = new_msg.id
-        await set_settings(settings)
+        if channel := self.bot.settings.players_channel:
+            if message := await channel.fetch_message(self.bot.settings.players_message_id):
+                persistent = PlayerRegisterPersistent()
+                if new_message := await process_messages(channel, message, persistent.embed(), persistent):
+                    self.bot.settings.players_message = new_message.id
+        self.bot.settings.save()
 
     @reposter.before_loop
     async def before_checks(self):
