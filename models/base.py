@@ -1,35 +1,34 @@
-from bson.objectid import ObjectId
+import discord
 
+from custom import VRPLBot, bot
 from pydantic import BaseModel
+from pymongo.collection import UpdateResult, InsertOneResult, DeleteResult
+from typing import Union
 
-
-class PyObjectId(ObjectId):
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, v):
-        if not ObjectId.is_valid(v):
-            raise ValueError("Invalid Object ID")
-        return ObjectId(v)
-
-    @classmethod
-    def __modify_schema__(cls, field_schema):
-        field_schema.update(type="string")
 
 
 class Base(BaseModel):
-    name: str
+    _bot: VRPLBot = bot
 
-    # _instances = []
+    @property
+    def bot(self):
+        return self._bot
 
-    class Config:
-        allow_population_by_field_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
-        schema_extra = {
-            "example": {
-                "name": "Item Name",
-            }
-        }
+    @classmethod
+    def db(cls):
+        raise NotImplemented
+
+    def public_embed(self) -> discord.Embed:
+        raise NotImplemented
+
+    def private_embed(self) -> discord.Embed:
+        raise NotImplemented
+
+    def save(self) -> Union[UpdateResult, InsertOneResult]:
+        """ Saves this model to the collection """
+        return self.db().save(model=self)
+
+    def delete(self) -> DeleteResult:
+        """ Deletes this model from the collection """
+        return self.db().delete(model=self)
+
