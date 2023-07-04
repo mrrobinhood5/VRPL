@@ -1,4 +1,6 @@
 import discord
+from pymongo.results import UpdateResult, InsertOneResult
+
 from models.base import Base
 from typing import Optional, Union
 from pydantic import validator, Field
@@ -43,6 +45,10 @@ class SettingsModel(Base):
             return cls._bot.get_channel(v)
         else:
             return None
+
+    def save(self) -> Union[UpdateResult, InsertOneResult]:
+        _ = self.dict(exclude={'teams_channel', 'players_channel', 'teams_message', 'players_message'})
+        self.db().save(model=_)
 
     async def get_messages(self):
         """ asyncly gets the messages. Cannot be done during validation, has to be called explicitly """

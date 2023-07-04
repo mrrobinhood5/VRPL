@@ -1,12 +1,13 @@
 import discord
 from discord.ext import commands
 from database import DBConnect
+from pymongo.database import Database
 from typing import Optional
 from config import INTENTS, BOT_PREFIX, BOT_OWNER, COGS, TESTING_GUILD
 
 
 class VRPLBot(commands.Bot):
-    def __init__(self, *args, initial_extensions: list[str], db: DBConnect, testing_guild: Optional[int], **kwargs):
+    def __init__(self, *args, initial_extensions: list[str], db: Database, testing_guild: Optional[int], **kwargs):
         super().__init__(*args, **kwargs)
         self.initial_extensions = initial_extensions
         self.db = db
@@ -24,4 +25,4 @@ class VRPLBot(commands.Bot):
 
 
 bot = VRPLBot(command_prefix=BOT_PREFIX, description='VRPL Team Manager', intents=INTENTS, owner_id=int(BOT_OWNER),
-              db=DBConnect(), testing_guild=TESTING_GUILD, initial_extensions=['cogs.players', 'cogs.admin'])
+              db=DBConnect().db, testing_guild=TESTING_GUILD, initial_extensions=['cogs.players', 'cogs.admin'])
