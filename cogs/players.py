@@ -6,7 +6,6 @@ from models.players import PlayerModel
 from pydantic import ValidationError
 
 
-#  TODO: an registered player looking for a my_team errors out
 class PlayerCommands(commands.GroupCog, name='players'):
 
     def __init__(self, bot: commands.Bot) -> None:
@@ -18,7 +17,7 @@ class PlayerCommands(commands.GroupCog, name='players'):
         """ Displays your own player """
         await inter.response.defer(ephemeral=True)
         try:
-            me = PlayerModel.get(inter.user)
+            me = PlayerModel.get_by_discord(inter.user)
         except ValueError as e:
             await inter.followup.send(f'{e}')
             return
@@ -30,11 +29,8 @@ class PlayerCommands(commands.GroupCog, name='players'):
     async def player_view_all(self, inter: Interaction) -> None:
         """ Views all Players """
         await inter.response.defer(ephemeral=True)
-        try:
-            players = PlayerModel.get_all()
-        except ValidationError as e:
-            print(dict(e))
-            return
+        if not (players := PlayerModel.get_all()):
+            raise ValueError('No Players')
 
         view = PlayerModel.PlayerCarousel(players)
         await inter.followup.send(embed=players[0].public_embed(), view=view)
@@ -45,7 +41,7 @@ class PlayerCommands(commands.GroupCog, name='players'):
         """ Searches for a Player or Players """
         await inter.response.defer(ephemeral=True)
 
-        players = PlayerModel.get_some(search=name)
+        players = PlayerModel.get_some(search=name, key='name')
         if not players:
             await inter.followup.send(f'No results found')
         else:

@@ -1,6 +1,9 @@
-
-from discord import Interaction
+import discord
+from discord import Interaction, app_commands
 from discord.ext import commands
+from models.teams import TeamModel
+from models.players import PlayerModel
+import models
 
 # from views.teamplayers import TeamCarousel, OwnTeamPlayerView, OwnTeamCoCaptainView, OwnTeamCaptainView
 
@@ -23,44 +26,51 @@ class TeamCommands(commands.GroupCog, name='teams'):
         self.bot = bot
         super().__init__()
 
-    # @app_commands.command(name='list', description='List all teams')
-    # async def teams_view_all(self, inter: Interaction):
-    #     """ List all teams """
-    #     await inter.response.defer(ephemeral=True)
-    #     team_list = await list_teams(50, full=True)
-    #     await team_view_handler(inter, team_list)
-    #
-    # @app_commands.command(name='search', description='Search for a team')
-    # async def team_search(self, inter: Interaction, name: str):
-    #     """ Search for a team """
-    #     await inter.response.defer(ephemeral=True)
-    #     team_list = await list_teams(50, full=True)
-    #     team_list = [team for team in team_list if name.lower() in team['name'].lower()]
-    #     await team_view_handler(inter, team_list)
-    #
-    # @app_commands.command(name='my_team', description='Display my team')
-    # async def team_me(self, inter: Interaction):
-    #     """ Display your own team """
-    #     await inter.response.defer(ephemeral=True)
-    #     if not (_ := await show_player(player_id=inter.user.id)):
-    #         await inter.followup.send(f'You are not registered yet')
-    #     try:
-    #         team = await get_player_team(_['_id'])
-    #     except HTTPException as e:
-    #         await inter.followup.send(embed=GenericErrorEmbed(inter.user, e))
-    #         return
-    #     full_team = FullTeamModel(**await show_team(team.get('_id'), full=True))
-    #
-    #     match inter.user.id:
-    #         case full_team.captain_discord_id:
-    #             view = OwnTeamCaptainView(full_team)
-    #         case full_team.co_captain_discord_id:
-    #             view = OwnTeamCoCaptainView(full_team)
-    #         case _:
-    #             view = OwnTeamPlayerView(full_team)
+    async def cog_app_command_error(self, inter: discord.Interaction, error: app_commands.AppCommandError) -> None:
+        inter.response.send_message(content='App Command Error')
 
-        # await inter.followup.send(embed=OwnTeamEmbed(full_team), view=view)
-        # await view.wait()
+    @app_commands.command(name='list', description='List all teams')
+    async def teams_view_all(self, inter: Interaction):
+        """ List all teams """
+        await inter.response.defer(ephemeral=True)
+        if not (teams := TeamModel.get_all()):
+            raise ValueError('No Teams Found')
+        view = TeamModel.TeamCarousel(teams)
+        await inter.followup.send(embed=teams[0].public_embed(), view=view)
+        await view.wait()
+
+    @app_commands.command(name='search', description='Search for a team')
+    async def team_search(self, inter: Interaction, name: str):
+        """ Search for a team """
+        await inter.response.defer(ephemeral=True)
+        if not (teams := TeamModel.get_some(name, 'name')):
+            raise ValueError('No Teams Found')
+        view = TeamModel.TeamCarousel(teams)
+        await inter.followup.send(embed=teams[0].public_embed(), view=view)
+        await view.wait()
+
+    @app_commands.command(name='my_team', description='Display my team')
+    async def team_me(self, inter: Interaction):
+        """ Display your own team """
+        await inter.response.defer(ephemeral=True)
+        # check to see if you are registered
+        if not (player := PlayerModel.get_by_discord(inter.user)):
+            raise ValueError(f'You are not registered yet.')
+        if not (approval := models.PlayerTeamLinkModel.get_approved(inter.user)):
+            raise ValueError(f'You dont belong to a team')
+
+        team = TeamModel.get_by_id(approval.team.id)
+
+        match player:
+            case team.captain:
+                view = team.CaptainView(team)
+            case team.co_captain:
+                view = team.CoCaptainView(team)
+            case _:
+                view = team.PlayerView(team)
+
+        await inter.followup.send(embed=team.private_embed(), view=view)
+        await view.wait()
 
 
 

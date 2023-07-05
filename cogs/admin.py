@@ -5,6 +5,7 @@ from discord.ext.commands import Context, Greedy
 from discord import Object, HTTPException, app_commands, Interaction, TextChannel
 from models.teams import TeamRegisterPersistent
 from models.players import PlayerRegisterPersistent
+from models.admin import SettingsModel
 
 
 async def is_server_owner(ctx):
@@ -27,7 +28,10 @@ class AdminCommands(commands.Cog, name='Admin Commands'):
 
         if channel == 'Player':
             if settings.players_message:
-                await settings.players_message.delete()
+                try:
+                    await settings.players_message.delete()
+                except Exception as e:
+                    print(e)
             settings.players_channel_id = select.id
             settings.players_channel = select
             persistent = PlayerRegisterPersistent()
@@ -36,7 +40,10 @@ class AdminCommands(commands.Cog, name='Admin Commands'):
 
         if channel == 'Team':
             if settings.teams_message:
-                await settings.teams_message.delete()
+                try:
+                    await settings.teams_message.delete()
+                except Exception as e:
+                    print(e)
             settings.teams_channel_id = select.id
             settings.teams_channel = select
             persistent = TeamRegisterPersistent()
@@ -44,6 +51,7 @@ class AdminCommands(commands.Cog, name='Admin Commands'):
             settings.teams_message_id = settings.teams_message.id
 
         settings.save()
+        inter.client.refresh_settings()
 
     @commands.command(name='drop_db')
     @commands.is_owner()

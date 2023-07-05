@@ -35,8 +35,6 @@ class UpdateButton(Button):
         await self.view.callback(inter)
 
 
-
-
 class CounterButton(Button):
 
     def __init__(self):
@@ -49,26 +47,20 @@ class CounterButton(Button):
 
 class ApproveButton(Button):
 
-    def __init__(self, label: Optional[str]):
-        self._ = label or 'Approve'
-        super().__init__(custom_id='approve', label=self._, style=ButtonStyle.green)
+    def __init__(self, label: Optional[str] = 'Approve'):
+        super().__init__(custom_id='approve', label=label, style=ButtonStyle.green)
 
     async def callback(self, inter: Interaction):
         self.view.approval = True
         inter = inter if inter else Object(id="1234")
         await self.view.callback(inter) if inter else await self.view.callback()
-        # self.view.stop()
 
 
 class RejectButton(Button):
 
-    def __init__(self, label: Optional[str]):
-        self._ = label or 'Reject'
-        super().__init__(custom_id='reject', label=self._, style=ButtonStyle.danger)
+    def __init__(self, label: Optional[str] = 'Reject'):
+        super().__init__(custom_id='reject', label=label, style=ButtonStyle.danger)
 
     async def callback(self, inter: Interaction):
         self.view.approval = False
         await self.view.callback(inter) if inter else await self.view.callback()
-
-        # self.view.stop()
-

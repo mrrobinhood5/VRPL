@@ -1,6 +1,4 @@
 import discord
-from pymongo.results import UpdateResult, InsertOneResult
-
 from models.base import Base
 from models.players import PlayerModel
 from models.teams import TeamModel
@@ -9,8 +7,6 @@ from pydantic import validator
 from views.shared import Carousel, ApproveButton, RejectButton
 from database import DBConnect
 from bson import ObjectId
-
-
 from typing import Optional, Union
 
 
@@ -27,22 +23,29 @@ class PlayerTeamLinkModel(Base):
 
     @validator('player')
     def convert_player(cls, v):
-        return PlayerModel.get_by_id(v)
+        if isinstance(v, ObjectId):
+            return PlayerModel.get_by_id(v)
+        return v
 
     @validator('team')
     def convert_team(cls, v):
-        return TeamModel.get_by_id(v)
+        if isinstance(v, ObjectId):
+            return TeamModel.get_by_id(v)
+        return v
 
-    def save(self) -> Union[UpdateResult, InsertOneResult]:
-        """ Daves this model to collection, but strips the Player and Team Models back
-        to ObjectIds"""
+    def prep_save(self) -> 'Base':
         _updates = {}
         if isinstance(self.player, PlayerModel):
             _updates.update({'player': self.player.id})
         if isinstance(self.team, TeamModel):
             _updates.update({'team': self.team.id})
-        _ = self.copy(update=_updates)
-        return self.db().save(model=_)
+        return self.copy(update=_updates)
+
+    @classmethod
+    def get_approved(cls, player: discord.Member) -> Optional['PlayerTeamLinkModel']:
+        """ given a player discord member, it will return a PlayerTeamLinkModel if there are any approved joins"""
+        _ = PlayerModel.get_by_discord(player)
+        return PlayerTeamLinkModel.get_by_query({'player': _.id, 'approved': True})
 
     @classmethod
     def db(cls):
@@ -58,15 +61,16 @@ class PlayerTeamLinkModel(Base):
 
         @staticmethod
         def is_mine(inter: discord.Interaction, item):
-            """ This normally checks to see if the update button gets turned on, but doesnt apply here"""
+            """ This normally checks to see if the update button gets turned on, but doesn't apply here"""
             return True
 
         async def callback(self, inter: discord.Interaction):
-            """ Called when the approve or Reject Button are pressed. Should do the save or update"""
+            """ Called when approve or Reject Button are pressed. Should do the save or update"""
             if self.approval:
                 updates = {'approved': True}
                 new_item = self.item.copy(update=updates)
-                results = new_item.save() # process the approval
+                results = new_item.save()
+                # process the approval
 
                 # remove this item from the self.items
 
@@ -84,6 +88,5 @@ class PlayerTeamLinkModel(Base):
 
 class PlayerTeamLinkRepo(AbstractRepository[PlayerTeamLinkModel]):
     """ This class allows PlayerTeamLinkModels to update itself to the db collection """
-
     class Meta:
         collection_name = 'player_team_link'

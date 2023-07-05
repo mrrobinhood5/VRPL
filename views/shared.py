@@ -8,11 +8,11 @@ from views.buttons import ControlButton, CounterButton, UpdateButton, ApproveBut
 
 class UpdateGenericModal(discord.ui.Modal):
     def __init__(self, view: discord.ui.View):
-        self.view = view
         super().__init__()
+        self.view = view
 
-    async def on_error(self, inter: discord.Interaction, error: Exception, item: discord.ui.Item) -> None:
-        await inter.edit_original_response(content=f'Error: {error} in {item}', embed=None)
+    async def on_error(self, inter: discord.Interaction, error: Exception, item: Optional[discord.ui.Item] = None) -> None:
+        await inter.response.send_message(content=f'{error}', embed=None, ephemeral=True)
 
 
 class ItemView(discord.ui.View):
@@ -22,7 +22,7 @@ class ItemView(discord.ui.View):
         self.items = items
         self.update = UpdateButton(modal=modal)
 
-        self.updated_item: Optional[Base] = None
+        self.updated_item = None
         self.add_item(self.update) # Adds the Update Button
 
     async def on_timeout(self) -> None:
@@ -30,8 +30,9 @@ class ItemView(discord.ui.View):
             self.remove_item(child)
         return
 
-    # async def on_error(self, inter: discord.Interaction, error: BaseException, item: discord.ui.Item) -> None:
-    #     await inter.response.send_message(content=f'Error: {error} in {item}', embed=None)
+    @property
+    def item(self):
+        return self.items[0]
 
     async def interaction_check(self, inter: discord.Interaction) -> bool:
         """ This is used to check if the User who clicks a button is the one who sent it
@@ -39,9 +40,13 @@ class ItemView(discord.ui.View):
         return True
 
     async def callback(self, inter: discord.Interaction):
-        """ Callback for when the Update Button is Finished
-         Overwrite to cater to the item Model (TeamModel or PlayerModel)"""
-        raise NotImplemented
+        """ Callback for when the Update Button is pressed """
+        if not (result := self.updated_item.save()):
+            raise ValueError('Could not write to the database!')
+        self.updated_item = result
+        await inter.channel.send(content='**Processed Update**', embed=self.updated_item.public_embed())
+        await inter.edit_original_response(content=f'{"Success" if result else "Error!"}', embed=None, view=None)
+        self.stop()
 
 
 class Carousel(ItemView):

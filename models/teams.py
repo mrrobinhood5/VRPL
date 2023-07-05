@@ -1,6 +1,5 @@
 from bson.objectid import ObjectId
 from pydantic import Field, validator, FileUrl
-from pymongo.collection import UpdateResult, InsertOneResult
 from typing import Optional, Union
 from pydantic_mongo import ObjectIdField, AbstractRepository
 from database import DBConnect
@@ -10,13 +9,14 @@ import discord
 from views.shared import Carousel, UpdateGenericModal
 from config import DEFAULT_TEAM_LOGO
 from views.shared import ConfirmationView, UpdateButton
+import models
 
 
 #
 # TEAM MODELS
 #
 class TeamModel(Base):
-    """ Team Model is the representation of a full team. In code it will include full members
+    """ Team Model is the representation of a full team. In code, it will include full members
     in database it will only include ObjectIDs"""
     id: ObjectIdField = None
     name: str
@@ -26,12 +26,12 @@ class TeamModel(Base):
     co_captain: Optional[PlayerModel]
     active: bool = True
     mmr: int = 0
-    members: Optional[Union[list[ObjectIdField], list[PlayerModel]]] = Field(default=None, exclude=True)
+    members: Optional[Union[list[PlayerModel], list[ObjectIdField]]] = Field(default=None, exclude=True)
 
     @validator('captain')
     def build_captain(cls, v):
         """ takes in a ObjectID and returns the PlayerModel for the Captain """
-        if isinstance(v, ObjectIdField):
+        if isinstance(v, ObjectId):
             return PlayerModel.get_by_id(v)
         else:
             return v
@@ -39,7 +39,7 @@ class TeamModel(Base):
     @validator('members', each_item=True)
     def build_members(cls, v):
         """ takes in all the member ids and converts then into PlayerModels """
-        if isinstance(v, ObjectIdField):
+        if isinstance(v, ObjectId):
             return PlayerModel.get_by_id(v)
         else:
             return v
@@ -49,26 +49,13 @@ class TeamModel(Base):
         """ Returns a connection to a collection for this model """
         return TeamsRepo(DBConnect().db)
 
-    def save(self) -> Union[UpdateResult, InsertOneResult]:
-        """ Saves this model to the collection, it will strip the PlayerModel
-         from co-captain and save in their ObjectIDs """
+    def prep_save(self) -> 'Base':  # REFACTOR: This could be clearner
         _updates = {}
         if isinstance(self.captain, PlayerModel):
             _updates.update({'captain': self.captain.id})
         if isinstance(self.co_captain, PlayerModel):
             _updates.update({'co_captain': self.co_captain.id})
-        _ = self.copy(update=_updates)
-        return self.db().save(model=_)
-
-    @classmethod
-    def get_by_id(cls, team: ObjectIdField):
-        """ retireves a TeamModel from an ObjectID.
-        Used in teamplayerlinks to build the full team """
-        result = cls.db().find_one_by(query={'_id': team})
-        if not result:
-            raise ValueError('No team with that ID')
-        else:
-            return result
+        return self.copy(update=_updates)
 
     def public_embed(self) -> discord.Embed:
         """ Returns the public view Embed for a TeamModel """
@@ -92,7 +79,7 @@ class TeamModel(Base):
         embed.add_field(name='Infractions', value=f'```Infractions Here```')
         return embed
 
-    class TeamCarousel(Carousel):  # TODO: both team and player carousels can probably be abstacted to the BaseModel
+    class TeamCarousel(Carousel):
         def __init__(self, items: Optional[list['TeamModel']]):
             self.modal = TeamUpdateModal(view=self)
             super().__init__(items=items, modal=self.modal)
@@ -106,14 +93,6 @@ class TeamModel(Base):
                     return True
             return False
 
-        async def callback(self, inter: discord.Interaction): # TODO: this is the same for most, maybe pass the model so that it can abstract
-            result = self.updated_item.save()
-            await inter.edit_original_response(
-                content=f'{"Success" if result.acknowledged else "Error!"}', embed=None, view=None)
-            if result.acknowledged:
-                self.updated_item = TeamModel.get_by_id(self.updated_item.id)  # You need to get the updated version from the DB
-                await inter.channel.send(content='**Team Update**', embed=self.updated_item.public_embed())
-            self.stop()
 
     class PlayerView(discord.ui.View):
         """ PlayerView is what a regular player will see when viewing its own team.
@@ -136,8 +115,9 @@ class TeamModel(Base):
         async def leave_team(self, inter: discord.Interaction, button: discord.ui.Button):
             # send a new msg for confirmation
             await inter.response.defer()
+            button.disabled = True
 
-            confirmation = ConfirmationView() # TODO: Finish the 3 views for teams
+            confirmation = ConfirmationView()  # TODO: Finish the 3 views for teams
             msg = await inter.channel.send(content="Are you Sure?", view=confirmation)
             await confirmation.wait()
             await msg.delete()
@@ -184,7 +164,7 @@ class TeamModel(Base):
         #     await inter.response.send_message(content='Who do you want to remove', view=view, ephemeral=True)
         #     self.stop()
 
-    class Captain(CoCaptainView):
+    class CaptainView(CoCaptainView):
         """ CaptainView is what a Captain sees when viewing his own team.
         He has the ability to Destroy a team, Update a CoCaptain along with the rest of
         the views """
@@ -195,8 +175,10 @@ class TeamModel(Base):
 
         @discord.ui.button(label='Co-Captain', style=discord.ButtonStyle.green, disabled=False, row=1)
         async def update_co_captain(self, inter: discord.Interaction, button: discord.Button):
+            button.disabled = True
             if self.team.captain.discord_id != inter.user.id:
                 inter.response.send_message(content='You are not Captain of this team :stop_sign:', ephemeral=True)
+
                 self.stop()
             team_captains = [self.team.captain.id, self.team.co_captain.id if self.team.co_captain else None]
             options = [discord.SelectOption(label=member.name, value=f'{member.name}:{str(member.id)}')
@@ -207,6 +189,7 @@ class TeamModel(Base):
 
         @discord.ui.button(label='Disband Team', style=discord.ButtonStyle.danger, disabled=False, row=1)
         async def dismantle_team(self, inter: discord.Interaction, button: discord.Button):
+            button.disabled = True
             await inter.response.defer()
 
             confirmation = ConfirmationView()
@@ -245,7 +228,8 @@ class TeamModel(Base):
     #
     #
     # class MemberChooseView(View):
-    #     def __init__(self, options: list[SelectOption], team: FullTeamModel, choose_type: Literal['co_captain', 'remove']):
+    #     def __init__(self, options: list[SelectOption], team: FullTeamModel,
+    #     choose_type: Literal['co_captain', 'remove']):
     #         super().__init__()
     #         self.team = team
     #         self.choose_type = choose_type
@@ -276,15 +260,22 @@ class TeamRegisterModal(UpdateGenericModal, title='Register a Team'):
     def __init__(self, view: discord.ui.View):  # TODO: can you pass the model you need ot create for on_submit?
         super().__init__(view=view)
 
-    async def on_submit(self, inter: discord.Interaction) -> None:
+    async def on_submit(self, inter: discord.Interaction) -> None:  # TODO: or instead, return everything back to the vie
         """ Called when the form is submitted """
+        if TeamModel.get_by_query({'name': self.name.value}):
+            raise ValueError('Team Name is already Registered')
+
         item = TeamModel(name=self.name.value,
                          motto=self.motto.value,
                          logo=self.logo.value or None,
-                         captain=PlayerModel.get(inter.user))
+                         captain=PlayerModel.get_by_discord(inter.user))
         self.view.updated_item = item
-        result = item.save()
-        await inter.response.send_message(f'{"Success" if result.acknowledged else "Error!!"}', ephemeral=True)
+        if not (result := item.save()):
+            raise ValueError('Team could not be saved')
+
+        c = models.PlayerTeamLinkModel(player=PlayerModel.get_by_discord(inter.user), team=item, approved=True)
+        c.save()
+        await inter.response.send_message(f'{"Success" if result else "Error!!"}', ephemeral=True)
         self.stop()
 
 
@@ -295,10 +286,9 @@ class TeamUpdateModal(TeamRegisterModal, title='Team Update'):
         for text_input in self.children:
             text_input.required = False
 
-
     async def on_submit(self, inter: discord.Interaction) -> None:
-        updates = {x.custom_id: x.value for x in self.children if x.value}
-        self.view.updated_item = self.view.team.copy(update=updates, deep=True) if updates else None
+        updates = {x.custom_id: x.value for x in self.children if x.value} # noqa
+        self.view.updated_item = self.view.item.copy(update=updates, deep=True) if updates else None
         await inter.response.send_message(f'Updates have been sent', delete_after=10)
 
 
@@ -327,22 +317,28 @@ class TeamRegisterPersistent(discord.ui.View):
 
     def __init__(self):
         super().__init__(timeout=None)
-        self.updated_team: Optional[TeamModel] = None
+        self.updated_item: Optional[TeamModel] = None
+
+    async def on_error(self, inter: discord.Interaction, error: Exception, item: Optional[discord.ui.Item] = None):
+        await inter.response.send_message(content=f'{error}', ephemeral=True)
 
     @discord.ui.button(label='Register a Team', style=discord.ButtonStyle.green, custom_id='team:register')
     async def register(self, inter: discord.Interaction, button: discord.ui.Button):
-        if not (player := PlayerModel.get(inter.user)):
-            await inter.response.send_message(f'You are not registered yet.')
-        # TODO: can we check to see if this player is part of a team already?
+
+        if not (player := PlayerModel.get_by_discord(inter.user)):
+            raise ValueError(f'You are not registered yet.')
+        if models.PlayerTeamLinkModel.get_approved(inter.user):
+            raise ValueError(f'You already belong to a team')
+
         modal = TeamRegisterModal(view=self)
 
         await inter.response.send_modal(modal)
         await modal.wait()
-        await inter.channel.send(content="**New Team Registered**", embed=self.updated_team.public_embed())
+        await inter.channel.send(content="**New Team Registered**", embed=self.updated_item.public_embed())
 
     @discord.ui.button(label="Join a Team", style=discord.ButtonStyle.blurple, custom_id='team:join')
     async def join(self, inter: discord.Interaction, button: discord.ui.Button):
-        if not (player := PlayerModel.get(inter.user)):
+        if not (player := PlayerModel.get_by_discord(inter.user)):
             await inter.response.send_message(content="You are not registered", ephemeral=True)
         # try:  # check to see if this player does not already belong to a team
         #         player_team = await get_player_team(inter.user.id)

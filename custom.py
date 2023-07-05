@@ -18,11 +18,14 @@ class VRPLBot(commands.Bot):
         for extension in self.initial_extensions:
             await self.load_extension(extension)
 
-        if self.testing_guild:
-            guild = discord.Object(self.testing_guild)
-            self.tree.copy_global_to(guild=guild)
-            await self.tree.sync(guild=guild)
+        # if self.testing_guild:
+        #     guild = discord.Object(self.testing_guild)
+        #     self.tree.copy_global_to(guild=guild)
+        #     await self.tree.sync(guild=guild)
+
+    def refresh_settings(self):
+        self.settings = self.settings.refresh()
 
 
 bot = VRPLBot(command_prefix=BOT_PREFIX, description='VRPL Team Manager', intents=INTENTS, owner_id=int(BOT_OWNER),
-              db=DBConnect().db, testing_guild=TESTING_GUILD, initial_extensions=['cogs.players', 'cogs.admin'])
+              db=DBConnect().db, testing_guild=TESTING_GUILD, initial_extensions=['cogs.players', 'cogs.admin', 'cogs.teams'])
