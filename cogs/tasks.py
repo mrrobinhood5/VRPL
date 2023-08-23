@@ -3,8 +3,8 @@ from discord.ext import tasks, commands
 from discord.ui import View
 from custom import VRPLBot
 
-from models.players import PlayerRegisterPersistent
-from models.teams import TeamRegisterPersistent
+from old_models.players import PlayerRegisterPersistent
+from old_models.teams import TeamRegisterPersistent
 
 
 async def process_messages(channel: TextChannel, message: Message, embed: Embed, view: View) -> Message:

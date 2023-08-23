@@ -6,15 +6,17 @@ from discord.ui import Button, Modal
 
 class ControlButton(Button):
 
-    def __init__(self, custom_id: Literal['next', 'previous']):
-        if custom_id == 'next':
+    def __init__(self, action: Literal['next', 'previous']):
+        self.action = action
+        if action == 'next':
             label = "Next >"
         else:
             label = "< Previous"
-        super().__init__(custom_id=custom_id, label=label, style=ButtonStyle.green)
+        super().__init__(label=label, style=ButtonStyle.green)
 
     async def callback(self, inter: Interaction):
-        if self.view.is_mine(inter, item := next(self.view.next_item if self.custom_id == 'next'
+        # await inter.response.defer()
+        if self.view.is_mine(inter, item := next(self.view.next_item if self.action == 'next'
                                                  else self.view.prev_item)):
             self.view.update.disabled = False
         else:

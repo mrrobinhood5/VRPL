@@ -1,13 +1,14 @@
 import discord
 from pymongo.results import UpdateResult, InsertOneResult
 
-from models.base import Base
+from old_models.base import Base
 from typing import Optional, Union
 from pydantic import validator, Field
 from bson import ObjectId
 from pydantic_mongo import ObjectIdField, AbstractRepository
-from database import DBConnect
+from database import Database
 
+# TODO rewrite settings becasuse
 
 class SettingsModel(Base):
     id: ObjectIdField = None
@@ -63,7 +64,7 @@ class SettingsModel(Base):
     @classmethod
     def db(cls):
         """ Returns a connection to a collection for this model """
-        return SettingsRepo(DBConnect().db)
+        return SettingsRepo(Database().db)
 
     @classmethod
     def get(cls) -> 'SettingsModel':

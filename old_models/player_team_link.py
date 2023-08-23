@@ -1,11 +1,11 @@
 import discord
-from models.base import Base
-from models.players import PlayerModel
-from models.teams import TeamModel
+from old_models.base import Base
+from old_models.players import PlayerModel
+from old_models.teams import TeamModel
 from pydantic_mongo import ObjectIdField, AbstractRepository
 from pydantic import validator
 from views.shared import Carousel, ApproveButton, RejectButton
-from database import DBConnect
+from database import Database
 from bson import ObjectId
 from typing import Optional, Union
 
@@ -45,14 +45,14 @@ class PlayerTeamLinkModel(Base):
     def get_approved(cls, player: discord.Member) -> Optional['PlayerTeamLinkModel']:
         """ given a player discord member, it will return a PlayerTeamLinkModel if there are any approved joins"""
         _ = PlayerModel.get_by_discord(player)
-        return PlayerTeamLinkModel.get_by_query({'player': _.id, 'approved': True})
+        return PlayerTeamLinkModel.get_one_by_query({'player': _.id, 'approved': True})
 
     @classmethod
     def db(cls):
         """ Returns a connection to a collection for this model """
-        return PlayerTeamLinkRepo(DBConnect().db)
+        return PlayerTeamLinkRepo(Database().db)
 
-    class TeamJoinsCarousel(Carousel):
+    class ApprovalsCarousel(Carousel):
         def __init__(self, items: Optional[list['PlayerTeamLinkModel']]):
             super().__init__(items=items, modal=None)
             self.remove_item(self.update)
@@ -66,7 +66,7 @@ class PlayerTeamLinkModel(Base):
 
         async def callback(self, inter: discord.Interaction):
             """ Called when approve or Reject Button are pressed. Should do the save or update"""
-            if self.approval:
+            if self.approval: # TODO:Why the fuck cant the button do this shit instead of passing back?
                 updates = {'approved': True}
                 new_item = self.item.copy(update=updates)
                 results = new_item.save()

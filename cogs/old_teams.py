@@ -1,9 +1,9 @@
 import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
-from models.teams import TeamModel
-from models.players import PlayerModel
-import models
+from old_models.teams import TeamModel
+from old_models.players import PlayerModel
+import old_models
 
 # from views.teamplayers import TeamCarousel, OwnTeamPlayerView, OwnTeamCoCaptainView, OwnTeamCaptainView
 
@@ -27,7 +27,7 @@ class TeamCommands(commands.GroupCog, name='teams'):
         super().__init__()
 
     async def cog_app_command_error(self, inter: discord.Interaction, error: app_commands.AppCommandError) -> None:
-        inter.response.send_message(content='App Command Error')
+        await inter.edit_original_response(content=f'App Command Error \n {error}')
 
     @app_commands.command(name='list', description='List all teams')
     async def teams_view_all(self, inter: Interaction):
@@ -56,7 +56,7 @@ class TeamCommands(commands.GroupCog, name='teams'):
         # check to see if you are registered
         if not (player := PlayerModel.get_by_discord(inter.user)):
             raise ValueError(f'You are not registered yet.')
-        if not (approval := models.PlayerTeamLinkModel.get_approved(inter.user)):
+        if not (approval := old_models.PlayerTeamLinkModel.get_approved(inter.user)):
             raise ValueError(f'You dont belong to a team')
 
         team = TeamModel.get_by_id(approval.team.id)
@@ -71,7 +71,7 @@ class TeamCommands(commands.GroupCog, name='teams'):
 
         await inter.followup.send(embed=team.private_embed(), view=view)
         await view.wait()
-
+        await inter.edit_original_response(content=f'Updated')
 
 
 async def setup(bot: commands.Bot):

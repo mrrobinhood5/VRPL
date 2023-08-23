@@ -1,11 +1,7 @@
-from typing import Optional, Literal
-
 from discord.ext import commands
 from discord.ext.commands import Context, Greedy
+from typing import Optional, Literal
 from discord import Object, HTTPException, app_commands, Interaction, TextChannel
-from models.teams import TeamRegisterPersistent
-from models.players import PlayerRegisterPersistent
-from models.admin import SettingsModel
 
 
 async def is_server_owner(ctx):
@@ -16,62 +12,6 @@ class AdminCommands(commands.Cog, name='Admin Commands'):
 
     def __init__(self, bot):
         self.bot = bot
-
-    @app_commands.command(name='config', description='Set default channels')
-    @commands.is_owner()
-    @app_commands.default_permissions(administrator=True)
-    async def config_channels(self, inter: Interaction, channel: Literal['Player', 'Team'], select: TextChannel):
-        """ Defines a Channel for the persistent Embed """
-        await inter.response.send_message(f'Request Sent', ephemeral=True)
-        settings = inter.client.settings
-        await settings.get_messages()
-
-        if channel == 'Player':
-            if settings.players_message:
-                try:
-                    await settings.players_message.delete()
-                except Exception as e:
-                    print(e)
-            settings.players_channel_id = select.id
-            settings.players_channel = select
-            persistent = PlayerRegisterPersistent()
-            settings.players_message = await select.send(embed=persistent.embed(), view=persistent)
-            settings.players_message_id = settings.players_message.id
-
-        if channel == 'Team':
-            if settings.teams_message:
-                try:
-                    await settings.teams_message.delete()
-                except Exception as e:
-                    print(e)
-            settings.teams_channel_id = select.id
-            settings.teams_channel = select
-            persistent = TeamRegisterPersistent()
-            settings.teams_message = await select.send(embed=persistent.embed(), view=persistent)
-            settings.teams_message_id = settings.teams_message.id
-
-        settings.save()
-        inter.client.refresh_settings()
-
-    @commands.command(name='drop_db')
-    @commands.is_owner()
-    async def drop_db(self, ctx: Context):
-        for collection in ctx.bot.db.list_collections:
-            collection.drop()
-        await ctx.reply(content='Dropped all the DBs, your honor.')
-
-    @app_commands.command(name='purge')
-    @app_commands.default_permissions(administrator=True)
-    @commands.check(is_server_owner)
-    async def clear_channel(self, inter: Interaction, amount: int = 100):
-        await inter.response.send_message(f'Purged Channel')
-        await inter.channel.purge(limit=amount, reason='Owner Purge', bulk=True)
-
-    @commands.command(name='get_ids')
-    @commands.is_owner()
-    async def get_ids(self, ctx: Context):
-        ids = [member.id for member in ctx.guild.members if not member.bot]
-        print(ids)
 
     @commands.command(name='sync')
     @commands.guild_only()
@@ -100,6 +40,15 @@ class AdminCommands(commands.Cog, name='Admin Commands'):
             else:
                 ret += 1
         await ctx.send(f"Synced the tree to {ret}/{len(guilds)}.")
+
+    @app_commands.command(name='dashboard', description='Displays the AdminDashboard')
+    @commands.is_owner()
+    @app_commands.default_permissions(administrator=True)
+    async def dashboard(self, inter: Interaction):
+        """ Defines a Channel for the persistent Embed """
+        dash = inter.client.admin_engine.get_dashboard()
+        embed = dash.embed(private=True)
+        await inter.response.send_message(embed=embed, view=dash, ephemeral=True)
 
 
 async def setup(bot: commands.Bot):

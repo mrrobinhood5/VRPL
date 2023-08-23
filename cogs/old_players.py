@@ -1,7 +1,7 @@
 from discord.ext import commands
 from discord import app_commands, Interaction
 
-from models.players import PlayerModel
+from old_models.players import PlayerModel
 
 from pydantic import ValidationError
 

@@ -1,7 +1,7 @@
 from typing import Optional, Type
 import discord
 
-from models.admin import Base
+from old_models.admin import Base
 
 from views.buttons import ControlButton, CounterButton, UpdateButton, ApproveButton, RejectButton
 
@@ -56,9 +56,9 @@ class Carousel(ItemView):
         self.item_index = 0
         self.timeout = None
 
-        self.previous = ControlButton('previous')
+        self.previous = ControlButton(action='previous')
         self.counter = CounterButton()
-        self.next = ControlButton('next')
+        self.next = ControlButton(action='next')
         self.update.disabled = True
 
         self.add_item(self.previous).add_item(self.counter).add_item(self.next)

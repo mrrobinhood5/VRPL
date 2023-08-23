@@ -1,75 +1,218 @@
-import discord
-
-from custom import VRPLBot, bot
-from pydantic import BaseModel
-from pymongo.collection import UpdateResult, InsertOneResult, DeleteResult
-from typing import Optional, Iterable
-from pydantic_mongo import AbstractRepository, ObjectIdField
+from beanie import Document, Indexed, BackLink, Link
+from typing import Optional, List, Union
+from pydantic import confloat, EmailStr, HttpUrl, Field
+from models.enums import Location, Region, MapTypes, TournamentParticipation
+from datetime import datetime
 
 
-class Base(BaseModel):
-    _bot: VRPLBot = bot
+class VRPLObject(Document):
+    pass
+
+
+class PlayerBase(VRPLObject):
+    discord_id: Indexed(int, unique=True)
+    name: Indexed(str, unique=True)
+    game_uid: str
+    height: confloat(ge=4.0, le=6.0)
+    location: Location
+    registered_date: datetime
+    alias: Optional[list[str]]
+    promo_email: Optional[EmailStr]
+    is_banned: bool = False
+    is_suspended: bool = False
+
+    caster: Optional[BackLink['CasterBase']] = Field(original_field='player')
+    teams: Optional[list[BackLink["TeamBase"]]] = Field(original_field='members')
+    tournaments: Optional[list[BackLink['TournamentBase']]] = Field(original_field='participants')
+    matches: Optional[list[BackLink["MatchBase"]]] = Field(original_field='participants')
+    reprimands: Optional[list[BackLink['ReprimandBase']]] = Field(original_field='recipient')
 
     @property
-    def bot(self) -> VRPLBot:
-        """ this returns an instance of the discord client bot.
-        This is useful when trying to get discord data from within the model. """
-        return self._bot
+    def mmr(self):
+        return False
 
-    @classmethod
-    def db(cls) -> AbstractRepository:
-        """ returns the Repo for that specific model.
-        Subclass this and return the type of Repo for the Model """
-        raise NotImplemented
+    class Settings:
+        is_root = True
 
-    def public_embed(self) -> discord.Embed:
-        """ returns the public facing embed for the model """
-        raise NotImplemented
+    class Config:
+        arbitrary_types_allowed = True
 
-    def private_embed(self) -> discord.Embed:
-        """ returns the private facing embed for the model """
-        raise NotImplemented
 
-    def prep_save(self) -> 'Base':
-        """ Subclass this to prep the Model before a save by updating its fields """
-        return self
+class CasterBase(VRPLObject):
+    twitch: HttpUrl
+    youtube: HttpUrl
+    logo: HttpUrl
+    approved: bool = False
 
-    def save(self) -> Optional['Base']:
-        """ Save will save itself to the database, and return the saved object back """
-        result = self.db().save(model=self.prep_save())
-        if isinstance(result, InsertOneResult):
-            if result.acknowledged:
-                return self.get_by_id(result.inserted_id)
-        if isinstance(result, UpdateResult):
-            return self.get_by_id(self.id)
-        return None
+    player: Link[PlayerBase]
+    broadcasts: Optional[list[BackLink['BroadcastBase']]] = Field(original_field='caster')
 
-    def delete(self) -> DeleteResult:
-        """ Deletes this model from the collection """
-        return self.db().delete(model=self)
 
-    @classmethod
-    def get_by_id(cls, model_id: ObjectIdField) -> Optional['Base']:
-        """ gets an id and returns the specific id """
-        return cls.get_by_query({'id': model_id})
+class TeamBase(VRPLObject):
+    name: Indexed(str, unique=True)
+    region: Region
+    motto: str
+    logo: HttpUrl
+    active: bool
+    created: datetime
 
-    @classmethod
-    def get_by_discord(cls, item: discord.Member) -> Optional['Base']:
-        """ gets a model by discord object """
-        return cls.get_by_query({'discord_id': item.id})
+    members: List[PlayerBase]  # will always have a captain
 
-    @classmethod
-    def get_by_query(cls, query: dict) -> Optional['Base']:
-        """ retrieves a Model by a key value pair """
-        return cls.db().find_one_by(query=query)
+    tournaments: Optional[list[BackLink["TournamentBase"]]] = Field(original_field="participants")
+    matches: Optional[List[BackLink["MatchBase"]]] = Field(original_field="participants")
+    reprimands: Optional[List[BackLink["ReprimandBase"]]] = Field(original_field="recipient")
 
-    @classmethod
-    def get_all(cls) -> Iterable['Base']:
-        """ returns a list of all models in this collection """
-        return list(cls.db().find_by(query={}, sort=[('id', -1)]))
+    @property
+    def mmr(self):
+        return True
 
-    @classmethod
-    def get_some(cls, search: str, key: str) -> Iterable['Base']:
-        """ returns a list of all models matching the key and term """
-        results = cls.get_all()
-        return [result for result in results if search in result.dict().get(key)]
+    @property
+    def leadership(self) -> list[Union['PlayerCaptain', 'PlayerCoCaptain']]:
+        return []
+
+    @property
+    def captain(self) -> 'PlayerCaptain':
+        return True
+
+    @property
+    def co_captain(self) -> 'PlayerCoCaptain':
+        return True
+
+    class Settings:
+        is_root = True
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class TournamentBase(VRPLObject):
+    name: Indexed(str, unique=True)
+    description: str
+    start_date: datetime
+    prizes: str
+    active: bool
+    is_joinable: bool
+    round_frequency: int  # in days
+    next_round: datetime
+    maps_per_round: int
+    map_types: MapTypes
+    elimination: bool
+    participation: TournamentParticipation
+
+    participants: list[Link[VRPLObject]]
+
+    weeks: Optional[list[BackLink['WeekBase']]] = Field(original_field="tournament")
+    matches: Optional[list[BackLink['MatchBase']]] = Field(original_field="tournament")
+    maps: Optional[list[BackLink['MapBase']]] = Field(original_field="maps")
+
+    class Settings:
+        is_root = True
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class WeekBase(VRPLObject):
+    order: int  # increment
+    start_date: datetime
+    end_date: datetime
+
+    tournament: Link[TournamentBase]
+    maps: Link[list['MapBase']]
+
+    matches: Optional[list[BackLink['MatchBase']]] = Field(original_field='week')
+
+    class Settings:
+        is_root = True
+
+
+class MapBase(VRPLObject):
+    name: Indexed(str, unique=True)
+    image: HttpUrl
+
+    tournaments: Optional[list[BackLink[TournamentBase]]] = Field(original_field="maps")
+    weeks: Optional[list[BackLink[WeekBase]]] = Field(original_field='maps')
+    matches: Optional[list[BackLink['MatchBase']]] = Field(original_field="maps")
+
+    class Settings:
+        is_root = True
+
+
+class MatchBase(VRPLObject):
+    # home: Union[TeamBase, PlayerBase]  # These can be properties?
+    # away: Union[TeamBase, PlayerBase]
+    match_date: Optional[datetime]
+
+    week: Link[WeekBase]
+    tournament: Link[TournamentBase]
+    maps: list[Link[MapBase]]
+    participants: list[Link[PlayerBase]]
+
+    scores: Optional[list[BackLink['ScoreBase']]] = Field(original_field="match")
+    broadcast: Optional[BackLink['BroadcastBase']] = Field(original_field="match")
+
+    class Settings:
+        is_root = True
+
+
+class ScoreBase(VRPLObject):
+    score: int
+    screenshot: HttpUrl
+    approved: bool  # this may not be needed, approval should create the score base otherwise it wouldn't exist
+
+    match: Link[MatchBase]
+    submitter: Link[VRPLObject]  # Implement Properly
+    approver: Link[VRPLObject]  # Implement Properly
+
+    class Settings:
+        is_root = True
+
+
+class ReprimandBase(VRPLObject):
+    text: str
+    reference_ticket: HttpUrl
+
+    recipient: Link[TeamBase]
+
+    class Settings:
+        is_root = True
+
+
+class BroadcastBase(VRPLObject):
+    link: HttpUrl
+
+    match: Link[MatchBase]
+    caster: Link[CasterBase]
+
+    class Settings:
+        is_root = True
+
+
+class SettingsBase(VRPLObject):
+    channel_id: int
+    message_id: int
+
+    class Settings:
+        is_root = True
+
+
+class ApprovalBase(VRPLObject):
+    """ Concept of approvals:
+    Requestor is the Object who wants something approved. It could be a Team or a Player. This is for reference.
+    Target is the Object that needs to be changed.
+    Property is the attribute from the Target that will be changed.
+    Action is the change itself. The boolean or thing that will be inserted into the Target's Property.
+    Approver is the person who will click YES to complete the action.
+    """
+    requestor: Link[VRPLObject]
+    target: Link[VRPLObject]
+    property: str
+    action: Union[str, bool, int, datetime]
+    approver: Link[VRPLObject]
+    date_complete: Optional[datetime]
+
+    class Settings:
+        is_root = True
+
+    class Config:
+        arbitrary_types_allowed = True
