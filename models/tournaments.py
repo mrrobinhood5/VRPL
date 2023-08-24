@@ -4,10 +4,10 @@ from models.enums import TournamentParticipation, MapTypes
 
 
 class SwissSystemPlayerControlTournament(TournamentBase):
-    is_joinable = True
-    elimination = False
-    participation = TournamentParticipation.PLAYER
-    map_types = MapTypes.ONE
+    is_joinable: bool = True
+    elimination: bool = False
+    participation: TournamentParticipation = TournamentParticipation.PLAYER
+    map_types: MapTypes = MapTypes.ONE
 
     participants: list[Link[PlayerBase]]
 
@@ -17,27 +17,27 @@ class SwissSystemPlayerControlTournament(TournamentBase):
 
 
 class InvitationalPlayerControlTournament(TournamentBase):
-    is_joinable = False
-    elimination = True
-    participation = TournamentParticipation.PLAYER
-    map_types = MapTypes.ONE
+    is_joinable: bool = False
+    elimination: bool = True
+    participation: TournamentParticipation = TournamentParticipation.PLAYER
+    map_types: MapTypes = MapTypes.ONE
 
     participants: list[Link[PlayerBase]]
 
 
 class SwissSystemTeamCompTournament(TournamentBase):
-    is_joinable = True
-    elimination = False
-    participation = TournamentParticipation.TEAM
-    map_types = MapTypes.COMP
+    is_joinable: bool = True
+    elimination: bool = False
+    participation: TournamentParticipation = TournamentParticipation.TEAM
+    map_types: MapTypes = MapTypes.COMP
 
     participants: list[Link[TeamBase]]
 
 
 class InvitationalTeamCompTournament(TournamentBase):
-    is_joinable = False
-    elimination = True
-    participation = TournamentParticipation.TEAM
-    map_types = MapTypes.COMP
+    is_joinable: bool = False
+    elimination: bool = True
+    participation: TournamentParticipation = TournamentParticipation.TEAM
+    map_types: MapTypes = MapTypes.COMP
 
     participants: list[Link[TeamBase]]

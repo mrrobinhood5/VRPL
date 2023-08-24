@@ -118,7 +118,7 @@ class WeekBase(VRPLObject):
     end_date: datetime
 
     tournament: Link[TournamentBase]
-    maps: Link[list['MapBase']]
+    maps: list[Link['MapBase']]
 
     matches: Optional[list[BackLink['MatchBase']]] = Field(original_field='week')
 

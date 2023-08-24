@@ -1,5 +1,4 @@
 import discord
-
 from views import PersistentDashboardBase, DashboardEmbedBase
 
 

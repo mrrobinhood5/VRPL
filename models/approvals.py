@@ -6,9 +6,9 @@ from beanie import Link
 class TeamJoinApproval(ApprovalBase):
     requestor: Link[PlayerBase]
     target: Link[TeamBase]
-    property = 'members'
+    property: str = 'members'
     action: PlayerBase
-    approver: Link[list[PlayerBase]]
+    approver: list[Link[PlayerBase]]
 
 
 class MatchDateApproval(ApprovalBase):
@@ -16,7 +16,7 @@ class MatchDateApproval(ApprovalBase):
     target: Link[MatchBase]
     property: str
     action: datetime
-    approver: Link[list[PlayerBase]]
+    approver: list[Link[PlayerBase]]
 
 
 class PlayerScoreApproval(ApprovalBase):

@@ -1,4 +1,5 @@
 import os, inspect, importlib
+from beanie import Document
 
 
 def all_models() -> list[str]:
@@ -8,7 +9,8 @@ def all_models() -> list[str]:
             try:
                 for (name, cls) in inspect.getmembers(importlib.import_module(f"models.{f.split('.')[0]}"), inspect.isclass):
                     x = f'{cls.__module__}.{name}'
-                    if x.startswith('models') and 'enums' not in x:
+                    if issubclass(cls, Document) and x.startswith('models'):
+                    # if x.startswith('models') and 'enums' not in x:
                         classes.append(x) if x not in classes else 0
             except Exception as e:
                 print(e)

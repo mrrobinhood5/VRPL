@@ -3,15 +3,15 @@ from .base import (PlayerBase, TeamBase, TournamentBase, MatchBase,
 
 
 class NormalPlayer(PlayerBase):
-    captain = False
-    co_captain = False
+    captain: bool = False
+    co_captain: bool = False
 
 
 class CaptainPlayer(PlayerBase):
-    captain = True
-    co_captain = False
+    captain: bool = True
+    co_captain: bool = False
 
 
 class CoCaptainPlayer(PlayerBase):
-    captain = False
-    co_captain = True
+    captain: bool = False
+    co_captain: bool = True
