@@ -1,17 +1,25 @@
 from .base import (PlayerBase, TeamBase, TournamentBase, MatchBase,
                    ReprimandBase, CasterBase)
+from pydantic import BaseModel
 
 
-class NormalPlayer(PlayerBase):
-    captain: bool = False
-    co_captain: bool = False
+class LeadershipMixin(BaseModel):
+    @property
+    def captain(self):
+        return isinstance(self, CaptainPlayer)
+
+    @property
+    def co_captain(self):
+        return isinstance(self, CoCaptainPlayer)
 
 
-class CaptainPlayer(PlayerBase):
-    captain: bool = True
-    co_captain: bool = False
+class NormalPlayer(PlayerBase, LeadershipMixin):
+    ...
 
 
-class CoCaptainPlayer(PlayerBase):
-    captain: bool = False
-    co_captain: bool = True
+class CaptainPlayer(PlayerBase, LeadershipMixin):
+    ...
+
+
+class CoCaptainPlayer(PlayerBase, LeadershipMixin):
+    ...

@@ -1,8 +1,14 @@
 from beanie import Document, Indexed, BackLink, Link
 from typing import Optional, List, Union
-from pydantic import confloat, EmailStr, HttpUrl, Field
+from pydantic import confloat, EmailStr, AnyUrl, Field, HttpUrl, BaseModel, AnyHttpUrl
+from pydantic_core import Url
 from models.enums import Location, Region, MapTypes, TournamentParticipation
 from datetime import datetime
+from pymongo import ASCENDING
+
+
+def url_to_str(v: Url):
+    return str(v)
 
 
 class VRPLObject(Document):
@@ -12,20 +18,20 @@ class VRPLObject(Document):
 class PlayerBase(VRPLObject):
     discord_id: Indexed(int, unique=True)
     name: Indexed(str, unique=True)
-    game_uid: str
+    game_uid: Indexed(str, unique=True)
     height: confloat(ge=4.0, le=6.0)
     location: Location
-    registered_date: datetime
-    alias: Optional[list[str]]
-    promo_email: Optional[EmailStr]
+    registered_on: datetime = datetime.now()
+    alias: Optional[list[str]] = Field(default_factory=list)
+    promo_email: Optional[EmailStr] = None
     is_banned: bool = False
     is_suspended: bool = False
 
-    caster: Optional[BackLink['CasterBase']] = Field(original_field='player')
-    teams: Optional[list[BackLink["TeamBase"]]] = Field(original_field='members')
-    tournaments: Optional[list[BackLink['TournamentBase']]] = Field(original_field='participants')
-    matches: Optional[list[BackLink["MatchBase"]]] = Field(original_field='participants')
-    reprimands: Optional[list[BackLink['ReprimandBase']]] = Field(original_field='recipient')
+    caster: Optional[BackLink['CasterBase']] = Field(original_field='player')  # dont think this is necessary
+    teams: Optional[list[BackLink["TeamBase"]]] = Field(original_field='members', default_factory=list)
+    tournaments: Optional[list[BackLink['TournamentBase']]] = Field(original_field='participants', default_factory=list)
+    matches: Optional[list[BackLink["MatchBase"]]] = Field(original_field='participants', default_factory=list)
+    reprimands: Optional[list[BackLink['ReprimandBase']]] = Field(original_field='recipient', default_factory=list)
 
     @property
     def mmr(self):
@@ -39,24 +45,28 @@ class PlayerBase(VRPLObject):
 
 
 class CasterBase(VRPLObject):
-    twitch: HttpUrl
-    youtube: HttpUrl
-    logo: HttpUrl
+    links: List[HttpUrl]
+    logo: Optional[AnyUrl] = None
     approved: bool = False
 
     player: Link[PlayerBase]
-    broadcasts: Optional[list[BackLink['BroadcastBase']]] = Field(original_field='caster')
+    broadcasts: Optional[list[BackLink['BroadcastBase']]] = Field(original_field='caster', default_factory=list)
 
+    class Settings:
+        bson_encoders = {
+            Url: url_to_str
+        }
+        is_root = True
 
 class TeamBase(VRPLObject):
     name: Indexed(str, unique=True)
     region: Region
-    motto: str
-    logo: HttpUrl
-    active: bool
-    created: datetime
+    motto: Optional[str] = None
+    logo: Optional[AnyUrl] = None
+    active: bool = True
+    registered_on: datetime = datetime.now()
 
-    members: List[PlayerBase]  # will always have a captain
+    members: List[Link[PlayerBase]]  # will always have a captain
 
     tournaments: Optional[list[BackLink["TournamentBase"]]] = Field(original_field="participants")
     matches: Optional[List[BackLink["MatchBase"]]] = Field(original_field="participants")
@@ -67,16 +77,8 @@ class TeamBase(VRPLObject):
         return True
 
     @property
-    def leadership(self) -> list[Union['PlayerCaptain', 'PlayerCoCaptain']]:
-        return []
-
-    @property
-    def captain(self) -> 'PlayerCaptain':
-        return True
-
-    @property
-    def co_captain(self) -> 'PlayerCoCaptain':
-        return True
+    def length(self):
+        return len(self.members)
 
     class Settings:
         is_root = True
@@ -128,7 +130,7 @@ class WeekBase(VRPLObject):
 
 class MapBase(VRPLObject):
     name: Indexed(str, unique=True)
-    image: HttpUrl
+    image: AnyUrl
 
     tournaments: Optional[list[BackLink[TournamentBase]]] = Field(original_field="maps")
     weeks: Optional[list[BackLink[WeekBase]]] = Field(original_field='maps')
@@ -157,7 +159,7 @@ class MatchBase(VRPLObject):
 
 class ScoreBase(VRPLObject):
     score: int
-    screenshot: HttpUrl
+    screenshot: AnyUrl
     approved: bool  # this may not be needed, approval should create the score base otherwise it wouldn't exist
 
     match: Link[MatchBase]
@@ -170,7 +172,7 @@ class ScoreBase(VRPLObject):
 
 class ReprimandBase(VRPLObject):
     text: str
-    reference_ticket: HttpUrl
+    reference_ticket: AnyUrl
 
     recipient: Link[TeamBase]
 
@@ -179,7 +181,7 @@ class ReprimandBase(VRPLObject):
 
 
 class BroadcastBase(VRPLObject):
-    link: HttpUrl
+    link: AnyUrl
 
     match: Link[MatchBase]
     caster: Link[CasterBase]
@@ -209,7 +211,7 @@ class ApprovalBase(VRPLObject):
     property: str
     action: Union[str, bool, int, datetime]
     approver: Link[VRPLObject]
-    date_complete: Optional[datetime]
+    date_requested: Indexed(datetime, index_type=ASCENDING) = datetime.now()
 
     class Settings:
         is_root = True

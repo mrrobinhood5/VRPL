@@ -40,4 +40,4 @@ class CasterRequestApproval(ApprovalBase):
     target: Link[CasterBase]
     property: str = 'approved'
     action: bool = True
-    approver: Link[VRPLObject]  # Need to make Admin Mixins
+    approver: Link[PlayerBase]  # Need to make Admin Mixins
