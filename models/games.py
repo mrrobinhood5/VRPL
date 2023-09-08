@@ -1,3 +1,10 @@
+from models.base import GameBase, VRPLObject, PlayerBase, TeamBase, CasterBase, MapBase, TournamentBase
+from beanie import Link
+
+
+class Game(GameBase):
+    ...
+
 # # OBSOLETE: LEFT OVER FROM LAST VERSION
 # @dataclass
 # class Tournament(Base):

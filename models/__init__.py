@@ -12,3 +12,4 @@ from .teams import *
 from .tournaments import *
 from .weeks import *
 from .embeds import *
+from .games import *
