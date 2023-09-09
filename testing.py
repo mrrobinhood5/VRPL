@@ -1,19 +1,17 @@
 import asyncio
 import random
-from datetime import datetime, timedelta
-from pprint import pp
+from datetime import timedelta
+
 from utils import all_models
 from database import Database
-from discord import Embed
+
 
 from beanie import init_beanie, WriteRules
-from beanie.operators import In, Where, ElemMatch
-from beanie.odm.fields import Link
-from bson.dbref import DBRef
-from models import *
+from engines import *
 from testing_utils.old_utils import generate_link, get_discord_ids, generate_username, make_member_id, generate_team_name, generate_guid, generate_description
 from random import randrange
 
+ids = get_discord_ids()
 def random_date(start, end):
     r = end - start
     d = random.randint(0, r.days)
@@ -27,34 +25,28 @@ async def reset_db(db, collection = None):
         await db[collection].drop()
 
 
-async def create_players(game, number):
-    ids = get_discord_ids()
-    for _ in range(number):
-        await NormalPlayer(games=[game], discord_id=next(ids), name=generate_username(), game_uid=generate_guid(),
-                           height=randrange(4, 6), location=random.choice(list(Location))).save()
+def generate_player(game):
+    return {'games': [game], 'discord_id': next(ids), 'name': generate_username(), 'game_uid': generate_guid(),
+            'height': randrange(4, 6), 'location': random.choice(list(Location))}
 
 
-async def create_teams(game, players) -> list:
-    teams = []
-    for player in players:
-        captain = CaptainPlayer(**player.dict())
-        (await player.delete(), await captain.save())
-        teams.append(await StandardTeam(game = game, name=generate_team_name(), region=random.choice(list(Region)),
-                                        motto=generate_description(), members=[captain]).insert())
-    return teams
+def generate_team(game, captain):
+    return {'game': game, 'name': generate_team_name(), 'region': random.choice(list(Region)),
+            'motto': generate_description(), 'members':[captain]}
 
 
-async def build_teams(teams, players):
-    for team in teams:
-        for _ in range(4):
-            team.members.append(players.pop()) if players else 0
-        for member in team.members:
-            if isinstance(member, NormalPlayer):
-                cocaptain = CoCaptainPlayer(**member.dict())
-                (await member.delete(), await cocaptain.save(), team.members.pop(team.members.index(member)))
-                team.members.append(cocaptain)
-                break
-        await team.save()
+#
+# async def build_teams(teams, players):
+#     for team in teams:
+#         for _ in range(4):
+#             team.members.append(players.pop()) if players else 0
+#         for member in team.members:
+#             if isinstance(member, NormalPlayer):
+#                 cocaptain = CoCaptainPlayer(**member.dict())
+#                 (await member.delete(), await cocaptain.save(), team.members.pop(team.members.index(member)))
+#                 team.members.append(cocaptain)
+#                 break
+#         await team.save()
 
 async def make_caster_request(game, player):
     caster = Caster(game=game, links=['https://www.twitch.tv/k1nggam355'], player=player)
@@ -135,75 +127,93 @@ async def schedule_matches(game, week):
 async def main():
     db = Database().db
     await reset_db(db)
+
+    pe = PlayerEngine()
+    te = TeamEngine()
+    ge = GameEngine()
+
     models = all_models()
     await init_beanie(database=db, document_models=models)
 
     # create a game
-    game = await Game(name="Contractor$").insert()
-
+    game = await ge.create_game(name="Contractors")
 
     # create Players if there are none already
-    players = await PlayerBase.find_all(with_children=True).to_list()
-    if not players:
-        await create_players(game, 20)
+    if not await pe.count(PlayerBase):
+        for _ in range(40):
+            await pe.register_player(**generate_player(game))
+    players = await pe.get_all(PlayerBase)
 
     # make a teams if no teams already exists
-    teams = await TeamBase.find_all(with_children=True).to_list()
-    if not teams:
-        players = [player for player in players if issubclass(NormalPlayer, player)]
-        teams = await create_teams(game, players[:4])
+    if not await te.count(TeamBase):
+        for player in players[:8]:
+            captain = await pe.make_captain(player)
+            await te.register_team(**generate_team(game, captain))
 
-        # add the rest of the players to the team
-        await build_teams(teams, await NormalPlayer.find({}, with_children=True).to_list())
+        normal_players = await pe.get_all(NormalPlayer)
+        teams = await te.get_all(TeamBase)
 
-    # make one a caster request
-    casters = await CasterBase.find_all(with_children=True).to_list()
-    if not casters:
-        await make_caster_request(game, await NormalPlayer.find({}).first_or_none())
+        for team in teams:
+            co_cap = await pe.make_co_captain(normal_players.pop())
+            await te.add_player(team, co_cap)
+            for _ in range(3):
+                await te.add_player(team, normal_players.pop())
 
-        # approve caster approval
-        await process_approval(await CasterRequestApproval.find({}, fetch_links=True).first_or_none())
+    games = await ge.get_all(GameBase, f={'name': 'Contractor$'})
+    for game in games:
+        assert len(game.players) == 40
+        assert len(game.teams) == 8
 
-    maps = await MapBase.find_all(with_children=True).to_list()
-    if not maps:
-        # make some maps
-        maps = await make_maps(game, 4)
+    test_player = await pe.get_all(CaptainPlayer)
+    print(test_player[0].name)
+    test_player = test_player[0].name[2:5]
+    test_player = await pe.get_by_name(name=test_player)
+    print(test_player.name)
 
 
-    # make a tournament
-    # await reset_db(db, 'TournamentBase')
-    # await reset_db(db, 'WeekBase')
-    # await reset_db(db, 'MatchBase')
-    tournaments = await TournamentBase.find_all(with_children=True).to_list()
-    if not tournaments:
-        tournament = await make_tournament(game, await TeamBase.find_all(with_children=True).to_list(), maps)
 
-    # start a weeks
-    weeks = await WeekBase.find_all(with_children=True).to_list()
-    if not weeks:
-        tournament = await make_weeks(tournament, 7)
-
-    # make all matches in a week
-    matches = await MatchBase.find_all(with_children=True).to_list()
-    if not matches:
-        week = await make_matches(tournament, 1)
-
-    # make approvals for the matches
-    approvals = await ApprovalBase.find_all().to_list()
-    if not approvals:
-        approvals = await schedule_matches(game=game, week=await WeekBase.find(WeekBase.order == 1, with_children=True, fetch_links=True).first_or_none())
-        async for approval in MatchDateApproval.find_all(with_children=True, fetch_links=True):
-            await process_approval(approval)
+    #
+    # # make one a caster request
+    # casters = await CasterBase.find_all(with_children=True).to_list()
+    # if not casters:
+    #     await make_caster_request(game, await NormalPlayer.find({}).first_or_none())
+    #
+    #     # approve caster approval
+    #     await process_approval(await CasterRequestApproval.find({}, fetch_links=True).first_or_none())
+    #
+    # maps = await MapBase.find_all(with_children=True).to_list()
+    # if not maps:
+    #     # make some maps
+    #     maps = await make_maps(game, 4)
+    #
+    #
+    # # make a tournament
+    # # await reset_db(db, 'TournamentBase')
+    # # await reset_db(db, 'WeekBase')
+    # # await reset_db(db, 'MatchBase')
+    # tournaments = await TournamentBase.find_all(with_children=True).to_list()
+    # if not tournaments:
+    #     tournament = await make_tournament(game, await TeamBase.find_all(with_children=True).to_list(), maps)
+    #
+    # # start a weeks
+    # weeks = await WeekBase.find_all(with_children=True).to_list()
+    # if not weeks:
+    #     tournament = await make_weeks(tournament, 7)
+    #
+    # # make all matches in a week
+    # matches = await MatchBase.find_all(with_children=True).to_list()
+    # if not matches:
+    #     week = await make_matches(tournament, 1)
+    #
+    # # make approvals for the matches
+    # approvals = await ApprovalBase.find_all().to_list()
+    # if not approvals:
+    #     approvals = await schedule_matches(game=game, week=await WeekBase.find(WeekBase.order == 1, with_children=True, fetch_links=True).first_or_none())
+    #     async for approval in MatchDateApproval.find_all(with_children=True, fetch_links=True):
+    #         await process_approval(approval)
 
 async def quicktest():
-    db = Database().db
-    models = all_models()
-    await init_beanie(database=db, document_models=models)
-
-    # create a game
-    game = await GameBase.find({}, with_children=True, fetch_links=True).first_or_none()
-    pp(game.matches)
-
+    pass
 
 if __name__ == "__main__":
-    asyncio.run(quicktest())
+    asyncio.run(main())

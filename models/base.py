@@ -1,11 +1,10 @@
 from beanie import Document, Indexed, BackLink, Link
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Type
 from pydantic import confloat, EmailStr, AnyUrl, Field, HttpUrl, BaseModel, AnyHttpUrl
 from pydantic_core import Url
 from models.enums import Location, Region, MapTypes, TournamentParticipation
 from datetime import datetime
 from pymongo import ASCENDING
-
 
 
 def url_to_str(v: Url):
@@ -98,6 +97,10 @@ class TeamBase(VRPLObject):
     @property
     def length(self):
         return len(self.members)
+
+    @property
+    def full(self):
+        return True if self.length >= self.max_size else False
 
     class Settings:
         bson_encoders = {Url: url_to_str}
