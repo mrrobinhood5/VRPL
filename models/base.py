@@ -33,8 +33,8 @@ class GameBase(VRPLObject):
 class PlayerBase(VRPLObject):
     discord_id: Indexed(int, unique=True)
     name: Indexed(str, unique=True)
-    game_uid: Indexed(str, unique=True)
-    height: confloat(ge=4.0, le=6.0)
+    game_uid: Optional[Indexed(str, unique=True)] = None
+    height: Optional[confloat(ge=4.0, le=6.0)] = None
     location: Location
     registered_on: datetime = datetime.now()
     alias: Optional[list[str]] = Field(default_factory=list)

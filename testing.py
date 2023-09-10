@@ -213,7 +213,22 @@ async def main():
     #         await process_approval(approval)
 
 async def quicktest():
-    pass
+    db = Database().db
+
+    pe = PlayerEngine()
+    te = TeamEngine()
+    ge = GameEngine()
+
+    models = all_models()
+    await init_beanie(database=db, document_models=models)
+
+    player = await pe.get_by_name('and')
+    team = await te.get_by_name('corn')
+    game = await ge.get_by_name('con')
+
+    print(game.name)
+    print(player.name)
+    print(team.name)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(quicktest())

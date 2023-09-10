@@ -1,20 +1,52 @@
+import discord
 from engines.base import BaseEngine
 from models import *
 from pydantic import ValidationError
 from typing import Type, TypeVar
-from beanie.operators import RegEx
+from beanie.operators import RegEx, In, Eq
 
 base = PlayerBase
 B = TypeVar('B', bound=PlayerBase)
 
-
 class PlayerEngine(BaseEngine):
 
-    async def get_by_discord(self, discord_id: int) -> Optional[B]:
-        return await base.find({'discord_id': discord_id}, with_children=True, fetch_links=True).first_or_none()
+    def __init__(self):
+        BaseEngine.pe = self
+
+    @property
+    async def settings(self) -> Optional[PlayerSettings]:
+        return await PlayerSettings.find_all().first_or_none()
+
+    async def update_settings(self, message: discord.Message, channel: discord.TextChannel) -> PlayerSettings:
+        if not await self.settings:
+            settings = PlayerSettings(channel_id=channel.id, message_id=message.id)
+            return await settings.insert()
+        else:
+            return await self.settings.set({'channel_id': channel.id, 'message_id': message.id})
 
     async def get_by_name(self, name: str) -> Optional[B]:
-        return await base.find(RegEx(base.name, name), with_children=True, fetch_links=True).first_or_none()
+        return await base.find(RegEx(base.name, f'(?i){name}'), with_children=True, fetch_links=True).first_or_none()
+
+    async def get_by_discord(self, discord_id: int) -> Optional[B]:
+        return await base.find(Eq(base.discord_id, discord_id), with_children=True, fetch_links=True).first_or_none()
+
+    async def get_by_location(self, location: Location) -> Optional[list[B]]:
+        return await base.find(Eq(base.location, location), with_children=True, fetch_links=True).to_list()
+
+    async def get_by_alias(self, name: str) -> Optional[list[B]]:
+        return await base.find(In(name, base.alias), with_children=True, fetch_links=True).to_list()
+
+    async def get_banned(self) -> Optional[list[B]]:
+        return await base.find(Eq(base.is_banned, True), with_children=True, fetch_links=True).to_list()
+
+    async def get_suspended(self) -> Optional[list[B]]:
+        return await base.find(Eq(base.is_suspended, True), with_children=True, fetch_links=True).to_list()
+
+    async def get_captains(self) -> Optional[list[CaptainPlayer]]:
+        return await CaptainPlayer.find({}, fetch_links=True).to_list()
+
+    async def get_co_captains(self) -> Optional[list[CoCaptainPlayer]]:
+        return await CoCaptainPlayer.find({}, fetch_links=True).to_list()
 
     async def register_player(self, **kwargs) -> NormalPlayer:
         try:

@@ -28,3 +28,16 @@ class MapTypes(Enum):
 class TournamentParticipation(Enum):
     PLAYER = 'Player'
     TEAM = 'Team'
+
+
+class PlayerSearchType(Enum):
+    ByDiscord = 'by Discord'
+    ByName = 'by Name'
+
+class PlayersSearchType(Enum):
+    LOCATION = 'By Location'
+    ALIAS = 'By Alias'
+    BANNED = 'If Banned'
+    SUSPENDED = 'If Suspended'
+    CAPTAINS = 'If Captain'
+    COCAPTAINS = 'If CoCaptain'
