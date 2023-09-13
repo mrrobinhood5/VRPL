@@ -1,4 +1,5 @@
 from models import VRPLObject
+from models.enums import SearchType
 from typing import Type, TypeVar, Optional
 from pydantic import ValidationError
 
@@ -22,7 +23,7 @@ class BaseEngine:
         """ Same as get_all() but without fetching links """
         return await base.find(f if f else {}, with_children=True).to_list()
 
-    async def get_by_name(self, name: str):
+    async def get_by(self, *args, **kwargs):
         raise NotImplementedError('Not implemented in this SubClass')
 
     async def update(self, base: Type[B], updates: dict) -> Type[B]:

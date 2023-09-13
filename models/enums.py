@@ -30,14 +30,23 @@ class TournamentParticipation(Enum):
     TEAM = 'Team'
 
 
-class PlayerSearchType(Enum):
+class SearchType(Enum):
+    ALL = 'ALL'
     ByDiscord = 'by Discord'
     ByName = 'by Name'
+    # ByLocation = 'By Location'
+    # ByAlias = 'By Alias'
+    # IsBanned = 'Is Banned'
+    # IsSuspended = 'Is Suspended'
+    # IsCaptain = 'Is Captain'
+    # IsCoCaptain = 'Is CoCaptain'
 
-class PlayersSearchType(Enum):
-    LOCATION = 'By Location'
-    ALIAS = 'By Alias'
-    BANNED = 'If Banned'
-    SUSPENDED = 'If Suspended'
-    CAPTAINS = 'If Captain'
-    COCAPTAINS = 'If CoCaptain'
+
+class SearchOutputType(Enum):
+    WithLinksToList = 'WithLinksToList'
+    WithLinksOnlyOne = 'WithLinksOnlyOne'
+    NoLinksToList = 'NoLinksToList'
+    NoLinksOnlyOne = 'NoLinksOnlyOne'
+    OnlyNames = 'OnlyNames'
+
+

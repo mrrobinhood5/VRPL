@@ -212,7 +212,7 @@ async def main():
     #     async for approval in MatchDateApproval.find_all(with_children=True, fetch_links=True):
     #         await process_approval(approval)
 
-async def quicktest():
+async def autocomplete_test():
     db = Database().db
 
     pe = PlayerEngine()
@@ -222,13 +222,21 @@ async def quicktest():
     models = all_models()
     await init_beanie(database=db, document_models=models)
 
-    player = await pe.get_by_name('and')
-    team = await te.get_by_name('corn')
-    game = await ge.get_by_name('con')
+    class ShortView(BaseModel):
+        name: str
 
-    print(game.name)
-    print(player.name)
-    print(team.name)
+        class Settings:
+            projection = {'_id': 0, 'name': '$member.name'}
+
+    # get all the team names
+    # players = await(te.aggregate(match='Conditioner', target_collection='PlayerBase', source_field='members'))
+    pipeline = [
+        {'$lookup': {'from': 'PlayerBase', 'localField': "members.$id", 'foreignField': "_id", 'as': 'member'}},
+        {'$unwind': f"$member"}
+    ]
+    players = await TeamBase.find(TeamBase.name == 'Conditioner', with_children=True).aggregate(aggregation_pipeline=pipeline, projection_model=ShortView).to_list()
+    print(players)
+
 
 if __name__ == "__main__":
-    asyncio.run(quicktest())
+    asyncio.run(autocomplete_test())
