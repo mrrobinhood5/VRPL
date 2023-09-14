@@ -11,13 +11,6 @@ from collections import namedtuple
 
 B = TypeVar('B', bound=TeamBase)
 
-
-class TeamMemberView(BaseModel):
-    name: str
-
-    class Settings:
-        projection = {'_id': 0, 'name': '$member.name'}
-
 class TeamNameView(BaseModel):
     name: str
 
@@ -27,14 +20,10 @@ class TeamEngine(BaseEngine):
     def __init__(self):
         BaseEngine.te = self
 
-    async def aggregate(self, match: str, target_collection: str, source_field: str):
-        pipeline = [
-            {'$lookup': {'from': target_collection, 'localField': f"{source_field}.$id", 'foreignField': "_id", 'as': 'member'}},
-            {'$unwind': f"$member"}]
-        return await TeamBase.find(TeamBase.name == match, with_children=True).aggregate(
-            aggregation_pipeline=pipeline, projection_model=TeamMemberView).to_list()
+    async def all_members_by_team(self, name: Optional[str] = None) -> Optional[list[AllTeamMembersByTeam]]:
+        return await AllTeamMembersByTeam.find(
+            Eq(AllTeamMembersByTeam.name, name) if name else {}).to_list()
 
-    # I think ALL returns should be without links
     async def get_by(self, name: Optional[str] = None, member: Optional[PlayerBase] = None, game: Optional[GameBase] = None,
                 region: Optional[Region] = None, active: Optional[bool] = None, aggregation: Optional[namedtuple] = None,
                 registered_before: Optional[datetime] = None, registered_after: Optional[datetime] = None,

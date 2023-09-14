@@ -220,22 +220,10 @@ async def autocomplete_test():
     ge = GameEngine()
 
     models = all_models()
-    await init_beanie(database=db, document_models=models)
+    await init_beanie(database=db, document_models=models, recreate_views=True)
 
-    class ShortView(BaseModel):
-        name: str
-
-        class Settings:
-            projection = {'_id': 0, 'name': '$member.name'}
-
-    # get all the team names
-    # players = await(te.aggregate(match='Conditioner', target_collection='PlayerBase', source_field='members'))
-    pipeline = [
-        {'$lookup': {'from': 'PlayerBase', 'localField': "members.$id", 'foreignField': "_id", 'as': 'member'}},
-        {'$unwind': f"$member"}
-    ]
-    players = await TeamBase.find(TeamBase.name == 'Conditioner', with_children=True).aggregate(aggregation_pipeline=pipeline, projection_model=ShortView).to_list()
-    print(players)
+    x = await te.all_members_by_team(name='Conditioner')
+    print(x)
 
 
 if __name__ == "__main__":

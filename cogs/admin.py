@@ -74,7 +74,7 @@ class AdminCommands(commands.Cog, name='admin'):
                           game: Optional[str], location: Optional[str],
                           captain: Optional[bool], co_captain: Optional[bool],
                           suspended: Optional[bool] = False, banned: Optional[bool] = False):
-        """ Searches for a Player """
+        """ Searches for a Player, inline mode """
         await inter.response.defer()
 
         if game:
@@ -97,6 +97,70 @@ class AdminCommands(commands.Cog, name='admin'):
             return await inter.followup.send(content=[x.name for x in result])
         else:
             return await inter.followup.send(content='Nothing found')
+
+    @app_commands.command(name='find_player_new', description='Search for a specific player, Dashboard Type')
+    @app_commands.default_permissions(administrator=True)
+    async def find_player_new(self, inter: Interaction, search_type: SearchType):
+        await inter.response.defer()
+
+        class PlayerSearchView(discord.ui.View):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+
+            async def callback(self):
+                for child in view.children:
+                    if child.values:
+                        continue
+                    else:
+                        return
+                self.stop()
+
+        class SelectMenu(discord.ui.Select):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+
+            async def callback(self, inter: Interaction) -> Any:
+                if len(self.options) >= len(self.values):
+                    await self.view.callback()
+
+        # first we need to know what type of search this will be
+        select_menu = SelectMenu(placeholder='What type of filters')
+        select_menu.add_option(label='Game', value='game')
+        select_menu.add_option(label='Location', value='location')
+        select_menu.add_option(label='Captain', value='captain')
+        select_menu.add_option(label='CoCaptain', value='co_captain')
+        select_menu.add_option(label='Suspended', value='suspended')
+        select_menu.add_option(label='Banned', value='banned')
+        select_menu.max_values = len(select_menu.options)
+        view = PlayerSearchView().add_item(select_menu)
+        action_msg = await inter.followup.send(content='Select Filters for search', view=view)
+        await view.wait()
+        view.clear_items()
+
+        menus = []
+        if select_menu.values:
+            for filter in select_menu.values:
+                match filter:
+                    case 'game':
+                        game_menu = SelectMenu(placeholder='Filter Games')
+                        menus.append(game_menu)
+                        games = await inter.client.ge.get_by(output=SearchOutputType.OnlyNames)
+                        for game in games:
+                            game_menu.add_option(value=game.name, label=game.name)
+
+                    case 'location':
+                        location_menu = SelectMenu(placeholder='Filter Locations')
+                        menus.append(location_menu)
+                        locations = await inter.client.pe.all_player_locations()
+                        print(len(locations))
+                        for location in locations:
+                            location_menu.add_option(value=location.name, label=location.name)
+
+        for menu in menus:
+            view.add_item(menu)
+        await action_msg.edit(content='', view=view)
+        await view.wait()
+
 
     @app_commands.command(name='list_games', description='List all Games')
     @app_commands.default_permissions(administrator=True)
@@ -152,8 +216,8 @@ class AdminCommands(commands.Cog, name='admin'):
 
     @find_player.autocomplete('location')
     async def autocomplete_locations(self, inter: Interaction, current: str):
-        choices = await inter.client.pe.all_player_locations(current)
-        return [app_commands.Choice(name=choice.id, value=choice.id) for choice in choices]
+        choices = await inter.client.pe.all_player_locations()
+        return [app_commands.Choice(name=choice.name, value=choice.name) for choice in choices]
 
 
 async def setup(bot: commands.Bot):

@@ -1,6 +1,7 @@
 from .base import (PlayerBase, TeamBase, TournamentBase, MatchBase,
                    ReprimandBase, CasterBase)
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from beanie import View
 
 
 class LeadershipMixin(BaseModel):
@@ -23,3 +24,14 @@ class CaptainPlayer(PlayerBase, LeadershipMixin):
 
 class CoCaptainPlayer(PlayerBase, LeadershipMixin):
     ...
+
+
+class AllPlayerLocations(View):
+    name: str = Field(alias='_id')
+    players: list[str]
+
+    class Settings:
+        source = PlayerBase
+        pipeline = [
+            {'$group': {'_id': '$location', 'players': {'$push': '$name'}}}
+        ]

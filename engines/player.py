@@ -11,8 +11,7 @@ from bson.dbref import DBRef
 B = TypeVar('B', bound=PlayerBase)
 
 
-class PlayerLocationsView(BaseModel):
-    location: Location
+
 
 
 class PlayerShortView(BaseModel):
@@ -29,10 +28,8 @@ class PlayerEngine(BaseEngine):
     async def settings(self) -> Optional[PlayerSettings]:
         return await PlayerSettings.find_all().first_or_none()
 
-    async def all_player_locations(self, name: Optional[str]=None) -> list[str]:
-        return await base.find({}, with_children=True).aggregate([{'$match': {'location': {'$regex': f'(?i){name if name else ""}'}}},
-                                     {'$group': {'_id': '$location'}}],
-                                    projection_model=PlayerLocationsView).to_list()
+    async def all_player_locations(self, location: Optional[str]=None) -> list[AllPlayerLocations]:
+        return await AllPlayerLocations.find(Eq(AllPlayerLocations.location, location) if location else {}).to_list()
 
     async def update_settings(self, message: discord.Message, channel: discord.TextChannel) -> PlayerSettings:
         if not await self.settings:
