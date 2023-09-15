@@ -14,7 +14,7 @@ B = TypeVar('B', bound=PlayerBase)
 
 
 
-class PlayerShortView(BaseModel):
+class PlayerNames(BaseModel):
     name: str
 
 
@@ -75,7 +75,7 @@ class PlayerEngine(BaseEngine):
             case SearchOutputType.WithLinksOnlyOne | SearchOutputType.NoLinksOnlyOne:
                 return await search.first_or_none()
             case SearchOutputType.OnlyNames:
-                return await search.project(PlayerShortView).to_list()
+                return await search.project(PlayerNames).to_list()
             case _:
                 return await search.to_list()
 

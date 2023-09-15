@@ -161,7 +161,6 @@ class AdminCommands(commands.Cog, name='admin'):
         await action_msg.edit(content='', view=view)
         await view.wait()
 
-
     @app_commands.command(name='list_games', description='List all Games')
     @app_commands.default_permissions(administrator=True)
     async def get_games(self, inter: Interaction):
@@ -196,6 +195,22 @@ class AdminCommands(commands.Cog, name='admin'):
     async def promote_player(self, inter: Interaction, team: str, player: str):
         pass
 
+    @app_commands.command(name='dashboard', description='Show Admin Dash')
+    @app_commands.default_permissions(administrator=True)
+    async def admin_dash(self, inter: Interaction):
+        await inter.response.defer()
+
+        view = inter.client.ae.dashboard
+        msg = await inter.followup.send(content='', embed=view.embed, view=view)
+        view.set_msg(msg)
+        await view.wait()
+
+        if view.next:
+            view = view.next.dashboard
+            msg = await inter.followup.send(content='', embed=view.embed, view=view)
+            view.set_msg(msg)
+            await view.wait()
+
     @promote_player.autocomplete('team')
     async def autocomplete_team(self, inter: Interaction, current: str):
         teams = await inter.client.te.get_by(name=current, output=SearchOutputType.OnlyNames)
@@ -203,10 +218,10 @@ class AdminCommands(commands.Cog, name='admin'):
 
     @promote_player.autocomplete('player')
     async def autocomplete_players(self, inter: Interaction, current: str):
-        players = await inter.client.te.aggregate(match=inter.namespace.team, target_collection='PlayerBase', source_field='members')
+        players = await inter.client.te.aggregate(match=inter.namespace.team, target_collection='PlayerBase',
+                                                  source_field='members')
         choices = [app_commands.Choice(name=player.name, value=player.name) for player in players]
         return choices
-
 
     @make_player.autocomplete('game')
     @find_player.autocomplete('game')

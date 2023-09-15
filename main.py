@@ -16,11 +16,12 @@ async def on_ready():
     activity = discord.Game('Contractor$ on Quest 3')
     await bot.change_presence(status=discord.Status.online, activity=activity)
     await bot.load_extensions(extensions)
+    await bot.load_engines()
 
     # Need a better way to register all persistent views maybe from the DB
     # bot.add_view(PlayerRegisterPersistent())
     # bot.add_view(TeamRegisterPersistent())
-    print(all_models())
+
     await init_beanie(database=Database().db, document_models=all_models(), recreate_views=True)
 
 
