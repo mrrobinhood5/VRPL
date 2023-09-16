@@ -200,15 +200,15 @@ class AdminCommands(commands.Cog, name='admin'):
     async def admin_dash(self, inter: Interaction):
         await inter.response.defer()
 
-        view = inter.client.ae.dashboard
+        view = inter.client.ae.dashboard()
         msg = await inter.followup.send(content='', embed=view.embed, view=view)
-        view.set_msg(msg)
+        view.msg = msg
         await view.wait()
 
-        if view.next:
-            view = view.next.dashboard
+        while view.next:
+            view = view.next.dashboard(caller=view.engine)
             msg = await inter.followup.send(content='', embed=view.embed, view=view)
-            view.set_msg(msg)
+            view.msg = msg
             await view.wait()
 
     @promote_player.autocomplete('team')

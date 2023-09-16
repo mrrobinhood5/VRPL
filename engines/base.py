@@ -1,17 +1,61 @@
 from models import VRPLObject
 from models.enums import SearchType
-from typing import Type, TypeVar, Optional
-from pydantic import ValidationError
+from typing import Type, TypeVar, Optional, List, Tuple, Dict
+from pydantic import ValidationError, Field
+import discord
+from discord import Interaction
 
-base = VRPLObject
+
 B = TypeVar('B', bound=VRPLObject)
 
 
 class BaseEngine:
 
-    pe = None
-    te = None
-    ge = None
+    base = VRPLObject
+    engines = {}
+
+    class DashboardView(discord.ui.View):
+
+        def __init__(self, msg: Optional[discord.WebhookMessage] = None,
+                     caller: Optional = None, engine = None):
+            super().__init__()
+            self.engine = engine
+            self._called_by = caller
+            self._msg = msg
+            self._embed: Optional[discord.Embed] = discord.Embed()
+            self.next: discord.ui.View = None
+
+        @property
+        def msg(self):
+            return self._msg
+
+        @msg.setter
+        def msg(self, msg):
+            self._msg = msg
+
+        @property
+        def embed(self):
+            return self._embed
+
+        @embed.setter
+        def embed(self, embed):
+            self._embed = embed
+
+        @discord.ui.button(style=discord.ButtonStyle.gray, label='Done')
+        async def done(self, inter: Interaction, button: discord.ui.Button):
+            self.stop()
+            self.next = None
+            await self.msg.delete()
+
+        @discord.ui.button(style=discord.ButtonStyle.gray, label='Back')
+        async def back(self, inter: Interaction, button: discord.ui.Button):
+            self.stop()
+            self.next = self._called_by or None
+            await self.msg.delete()
+
+    def dashboard(self, msg: Optional[discord.WebhookMessage] = None,
+                  caller: Optional = None, engine=engines): # TODO: I left of here, how to pass the caller engine to enable the back button
+        return self.DashboardView(msg, caller, engine)
 
     async def count(self, base: Optional[Type[B]] = base) -> int:
         return await base.find({}, with_children=True).count()
