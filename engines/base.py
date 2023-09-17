@@ -17,13 +17,12 @@ class BaseEngine:
     class DashboardView(discord.ui.View):
 
         def __init__(self, msg: Optional[discord.WebhookMessage] = None,
-                     caller: Optional = None, engine = None):
+                     prev: Optional = None):
             super().__init__()
-            self.engine = engine
-            self._called_by = caller
             self._msg = msg
             self._embed: Optional[discord.Embed] = discord.Embed()
-            self.next: discord.ui.View = None
+            self.next: Optional[discord.ui.View] = None
+            self.prev: Optional[BaseEngine] = prev
 
         @property
         def msg(self):
@@ -41,21 +40,23 @@ class BaseEngine:
         def embed(self, embed):
             self._embed = embed
 
-        @discord.ui.button(style=discord.ButtonStyle.gray, label='Done')
+        @discord.ui.button(style=discord.ButtonStyle.gray, label='Done', row=2)
         async def done(self, inter: Interaction, button: discord.ui.Button):
+            await inter.response.defer()
             self.stop()
             self.next = None
             await self.msg.delete()
 
-        @discord.ui.button(style=discord.ButtonStyle.gray, label='Back')
+        @discord.ui.button(style=discord.ButtonStyle.gray, label='Back', row=2)
         async def back(self, inter: Interaction, button: discord.ui.Button):
+            await inter.response.defer()
             self.stop()
-            self.next = self._called_by or None
+            self.next = self.prev
             await self.msg.delete()
 
     def dashboard(self, msg: Optional[discord.WebhookMessage] = None,
-                  caller: Optional = None, engine=engines): # TODO: I left of here, how to pass the caller engine to enable the back button
-        return self.DashboardView(msg, caller, engine)
+                  prev: Optional = None):
+        return self.DashboardView(msg, prev)
 
     async def count(self, base: Optional[Type[B]] = base) -> int:
         return await base.find({}, with_children=True).count()

@@ -20,60 +20,43 @@ class TeamNames(BaseModel):
 class TeamEngine(BaseEngine):
     base = TeamBase
 
-    class TeamView(discord.ui.View):
-        def __init__(self, msg: discord.WebhookMessage):
-            super().__init__()
-            self._msg = msg
+    class DashboardView(BaseEngine.DashboardView):
+
+        def __init__(self, msg: Optional[discord.WebhookMessage] = None, prev: Optional = None):
+            super().__init__(msg, prev)
             self._embed = (discord.Embed(colour=discord.Colour.dark_blue(),
                                          title='Team Dash',
                                          description='Team Options')
                            .set_thumbnail(url='https://i.imgur.com/VwQoXMB.png'))
-            self.next = None
-
-        def set_msg(self, msg: discord.WebhookMessage):
-            self._msg = msg
-
-        @property
-        def msg(self):
-            return self._msg
-
-        @property
-        def embed(self):
-            return self._embed
 
         @discord.ui.button(custom_id='team_view.find', style=discord.ButtonStyle.secondary, label='Find By')
         async def find(self, inter: Interaction, button: discord.ui.Button):
             await self.msg.edit(content='Accessing Team Find', embed=None, view=None)
             self.stop()
-            self.next = None
+            self.next = inter.client.find_by()
+            self.prev = inter.client.te.dashboard(prev=self.prev)
+            await self.msg.delete()
 
-        @discord.ui.button(custom_id='team_view.create', style=discord.ButtonStyle.secondary, label='Create')
+        @discord.ui.button(custom_id='team_view.create', style=discord.ButtonStyle.green, label='Create')
         async def create(self, inter: Interaction, button: discord.ui.Button):
             await self.msg.edit(content='Accessing Team Create', embed=None, view=None)
             self.stop()
+            self.next = inter.client.te.create()
+            self.prev = inter.client.te.dashboard(prev=self.prev)
 
-        @discord.ui.button(custom_id='team_view.update', style=discord.ButtonStyle.secondary, label='Update')
+        @discord.ui.button(custom_id='team_view.update', style=discord.ButtonStyle.green, label='Update')
         async def update(self, inter: Interaction, button: discord.ui.Button):
             await self.msg.edit(content='Accessing Player Update', embed=None, view=None)
             self.stop()
+            self.next = inter.client.te.update()
+            self.prev = inter.client.te.dashboard(prev=self.prev)
 
-        @discord.ui.button(custom_id='team_view.delete', style=discord.ButtonStyle.secondary, label='Delete')
+        @discord.ui.button(custom_id='team_view.delete', style=discord.ButtonStyle.green, label='Delete')
         async def delete(self, inter: Interaction, button: discord.ui.Button):
             await self.msg.edit(content='Accessing Team Delete', embed=None, view=None)
             self.stop()
-
-        async def on_timeout(self) -> None:
-            await self.msg.delete()
-
-        async def on_error(self, inter: Interaction, error: Exception, item: discord.ui.Item[Any], /) -> None:
-            await self.msg.edit(content=f'{error.args} on {item}')
-
-    def __init__(self):
-        BaseEngine.te = self
-
-    def dashboard(self, msg: Optional[discord.WebhookMessage] = None):
-        return self.TeamView(msg)
-
+            self.next = inter.client.te.delete()
+            self.prev = inter.client.te.dashboard(prev=self.prev)
 
     async def all_members_by_team(self, name: Optional[str] = None) -> Optional[list[AllTeamMembersByTeam]]:
         return await AllTeamMembersByTeam.find(

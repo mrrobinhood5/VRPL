@@ -19,64 +19,48 @@ class PlayerNames(BaseModel):
 class PlayerEngine(BaseEngine):
     base = PlayerBase
 
-    class PlayerView(discord.ui.View):
+    class DashboardView(BaseEngine.DashboardView):
 
-        def __init__(self, msg: discord.WebhookMessage):
-            super().__init__()
-            self._msg = msg
-            self._embed = (discord.Embed(colour=discord.Colour.dark_blue(),
+        def __init__(self, msg: Optional[discord.WebhookMessage] = None, prev: Optional = None):
+            super().__init__(msg, prev)
+            self._embed = (discord.Embed(colour=discord.Colour.green(),
                                          title='Player Dash',
                                          description='Player Options')
                            .set_thumbnail(url='https://i.imgur.com/VwQoXMB.png'))
-            self.next = None
 
-        def set_msg(self, msg: discord.WebhookMessage):
-            self._msg = msg
-
-        @property
-        def msg(self):
-            return self._msg
-
-        @property
-        def embed(self):
-            return self._embed
-
-        @discord.ui.button(custom_id='player_view.find', style=discord.ButtonStyle.secondary, label='Find By')
+        @discord.ui.button(custom_id='player_view.find', style=discord.ButtonStyle.green, label='Find By')
         async def find(self, inter: Interaction, button: discord.ui.Button):
             await self.msg.edit(content='Accessing Player Find', embed=None, view=None)
             self.stop()
-            self.next = None
+            self.next = inter.client.find_by()
+            self.prev = inter.client.pe.dashboard(prev=self.prev)
+            await self.msg.delete()
 
-        @discord.ui.button(custom_id='player_view.create', style=discord.ButtonStyle.secondary, label='Create')
+        @discord.ui.button(custom_id='player_view.create', style=discord.ButtonStyle.green, label='Create')
         async def create(self, inter: Interaction, button: discord.ui.Button):
             await self.msg.edit(content='Accessing Player Create', embed=None, view=None)
             self.stop()
+            self.next = inter.client.pe.create()
+            self.prev = inter.client.pe.dashboard(prev=self.prev)
 
-        @discord.ui.button(custom_id='player_view.update', style=discord.ButtonStyle.secondary, label='Update')
+        @discord.ui.button(custom_id='player_view.update', style=discord.ButtonStyle.green, label='Update')
         async def update(self, inter: Interaction, button: discord.ui.Button):
             await self.msg.edit(content='Accessing Player Update', embed=None, view=None)
             self.stop()
+            self.next = inter.client.pe.update()
+            self.prev = inter.client.pe.dashboard(prev=self.prev)
 
-        @discord.ui.button(custom_id='player_view.delete', style=discord.ButtonStyle.secondary, label='Delete')
+        @discord.ui.button(custom_id='player_view.delete', style=discord.ButtonStyle.green, label='Delete')
         async def delete(self, inter: Interaction, button: discord.ui.Button):
             await self.msg.edit(content='Accessing Player Delete', embed=None, view=None)
             self.stop()
+            self.next = inter.client.pe.delete()
+            self.prev = inter.client.pe.dashboard(prev=self.prev)
 
-        async def on_timeout(self) -> None:
-            await self.msg.delete()
-
-        async def on_error(self, inter: Interaction, error: Exception, item: discord.ui.Item[Any], /) -> None:
-            await self.msg.edit(content=f'{error.args} on {item}')
-
-    def __init__(self):
-        BaseEngine.pe = self
 
     @property
     async def settings(self) -> Optional[PlayerSettings]:
         return await PlayerSettings.find_all().first_or_none()
-
-    def dashboard(self, msg: Optional[discord.WebhookMessage] = None):
-        return self.PlayerView(msg)
 
     async def all_player_locations(self, location: Optional[str]=None) -> list[AllPlayerLocations]:
         return await AllPlayerLocations.find(Eq(AllPlayerLocations.location, location) if location else {}).to_list()
