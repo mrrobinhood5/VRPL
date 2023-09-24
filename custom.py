@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from config import TESTING_GUILD
+
 from engines import *
 
 
@@ -16,10 +16,10 @@ class VRPLBot(commands.Bot):
 
     async def load_engines(self, engines: Optional[list[str]] = None):
         # TODO: make this automated like when loading beanie models
-        self.ae: AdminEngine = AdminEngine()
-        self.ge: GameEngine = GameEngine()
-        self.pe: PlayerEngine = PlayerEngine()
-        self.te: TeamEngine = TeamEngine()
+        self.ae: AdminEngine = AdminEngine(bot=self)
+        self.ge: GameEngine = GameEngine(bot=self)
+        self.pe: PlayerEngine = PlayerEngine(bot=self)
+        self.te: TeamEngine = TeamEngine(bot=self)
 
-bot = VRPLBot(testing_guild=TESTING_GUILD, command_prefix='.', intents=discord.Intents.all())
+
 

@@ -30,6 +30,7 @@ class GameBase(VRPLObject):
         bson_encoders = {Url: url_to_str}
         is_root = True
 
+
 class PlayerBase(VRPLObject):
     discord_id: Indexed(int, unique=True)
     name: Indexed(str, unique=True)
@@ -73,6 +74,7 @@ class CasterBase(VRPLObject):
     class Settings:
         bson_encoders = {Url: url_to_str}
         is_root = True
+
 
 class TeamBase(VRPLObject):
     name: Indexed(str, unique=True)

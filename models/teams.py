@@ -1,7 +1,7 @@
 from .base import TeamBase, PlayerBase, TournamentBase, MatchBase, ReprimandBase
 from pydantic import BaseModel, Field
 from beanie import View
-
+from monggregate import Pipeline, S
 
 class LeadershipMixin(BaseModel):
 
@@ -31,14 +31,15 @@ class StandardTeam(TeamBase, LeadershipMixin):
 class MiniTeam(TeamBase, LeadershipMixin):
     max_size: int = 5
 
+
 class AllTeamMembersByTeam(View):
     name: str = Field(alias='_id')
     members: list[str]
 
     class Settings:
         source = TeamBase
-        pipeline = [
-            {'$lookup': {'from': "PlayerBase", 'localField': "members.$id", 'foreignField': "_id", 'as': "members"}},
-            {'$unwind': '$members'},
-            {'$group': {'_id': '$name', 'members': {'$push': '$members.name'}}}
-        ]
+        pipeline = (Pipeline()
+                    .lookup(right='PlayerBase', right_on='_id', left_on='members.$id', name='members')
+                    .unwind('$members')
+                    .group(by='$name', query={'members': S.push('$members.name')})
+                    .export())

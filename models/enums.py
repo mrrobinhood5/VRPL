@@ -48,5 +48,3 @@ class SearchOutputType(Enum):
     NoLinksToList = 'NoLinksToList'
     NoLinksOnlyOne = 'NoLinksOnlyOne'
     OnlyNames = 'OnlyNames'
-
-

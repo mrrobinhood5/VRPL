@@ -1,4 +1,5 @@
 import asyncio
+import pprint
 import random
 from datetime import timedelta
 
@@ -10,6 +11,8 @@ from beanie import init_beanie, WriteRules
 from engines import *
 from testing_utils.old_utils import generate_link, get_discord_ids, generate_username, make_member_id, generate_team_name, generate_guid, generate_description
 from random import randrange
+from monggregate import Pipeline, S
+import time
 
 ids = get_discord_ids()
 def random_date(start, end):
@@ -220,10 +223,20 @@ async def autocomplete_test():
     ge = GameEngine()
 
     models = all_models()
+    st = time.time()
     await init_beanie(database=db, document_models=models, recreate_views=True)
+    et = time.time()
+    print(f'beanie loaded in {et-st}')
 
-    x = await te.all_members_by_team(name='Conditioner')
-    print(x)
+    from collections import namedtuple
+
+    team = await TeamBase.find({}, with_children=True).first_or_none()
+    iii = In('_id', [p.ref.id for p in team.members])
+    print(iii)
+    members = await PlayerBase.find(iii, with_children=True).to_list()
+    print(members)
+    x = [f"`{member.name}{' - Captain`' if isinstance(member, CaptainPlayer) else ' - CoCaptain`' if isinstance(member, CoCaptainPlayer) else '`'}" for member in members]
+    print('\n'.join(x))
 
 
 if __name__ == "__main__":

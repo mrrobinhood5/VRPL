@@ -1,3 +1,5 @@
+import asyncio
+
 import discord
 from discord.ext import commands
 from discord.ext.commands import Context, Greedy
@@ -31,7 +33,7 @@ async def send_not_found(ctx):
 class AdminCommands(commands.Cog, name='admin'):
 
     def __init__(self, bot):
-        print('admin loaded')
+        print('AdminCommands Cog loaded')
         self.bot = bot
         super().__init__()
 
@@ -201,16 +203,19 @@ class AdminCommands(commands.Cog, name='admin'):
         await inter.response.defer()
 
         # crates the Admin Dash
-        view = inter.client.ae.dashboard()
-        msg = await inter.followup.send(content='', embed=view.embed, view=view)
+        view = await inter.client.ae.dashboard()
+        msg = await inter.followup.send(content=view.text, embeds=view.embeds, view=view)
         view.msg = msg
+        print(f'On view: {view}, awaiting')
         await view.wait()
 
         # follows up until there's no view.next with the Done or Prev Buttons
         while view.next:
-            view = view.next  # this is a function
-            msg = await inter.followup.send(content='', embed=view.embed, view=view)
+            print(f'returned from: {view}, type: {type(view)}, going to {view.next}')
+            view = await view.next  # this is a function
+            msg = await view.msg.edit(content=view.text, embeds=view.embeds, view=view)
             view.msg = msg
+            print(f'On view: {view}, type: {type(view)}, awaiting')
             await view.wait()
 
         return

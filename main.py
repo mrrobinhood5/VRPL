@@ -2,12 +2,15 @@ import discord
 from beanie import init_beanie
 from database import Database
 from config import BOT_TOKEN
-from custom import bot
+from custom import VRPLBot
 from utils import all_models
+from config import TESTING_GUILD
 
-discord.utils.setup_logging()
+# discord.utils.setup_logging()
 
 extensions = ['cogs.admin']
+
+bot = VRPLBot(testing_guild=TESTING_GUILD, command_prefix='.', intents=discord.Intents.all())
 
 
 @bot.event
@@ -23,7 +26,6 @@ async def on_ready():
     # bot.add_view(TeamRegisterPersistent())
 
     await init_beanie(database=Database().db, document_models=all_models(), recreate_views=True)
-
 
 
 bot.run(BOT_TOKEN)

@@ -2,7 +2,7 @@ from .base import (PlayerBase, TeamBase, TournamentBase, MatchBase,
                    ReprimandBase, CasterBase)
 from pydantic import BaseModel, Field
 from beanie import View
-
+import datetime
 
 class LeadershipMixin(BaseModel):
     @property
@@ -35,3 +35,5 @@ class AllPlayerLocations(View):
         pipeline = [
             {'$group': {'_id': '$location', 'players': {'$push': '$name'}}}
         ]
+
+

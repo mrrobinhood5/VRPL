@@ -1,4 +1,6 @@
 import os, inspect, importlib
+import pprint
+
 from beanie import Document, View
 
 
@@ -14,4 +16,5 @@ def all_models() -> list[str]:
                         classes.append(x) if x not in classes else 0
             except Exception as e:
                 print(e)
+    # pprint.pp(classes)
     return classes
