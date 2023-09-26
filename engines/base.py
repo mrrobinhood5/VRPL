@@ -1,5 +1,5 @@
 from models import VRPLObject
-from typing import Any, Type, TypeVar, AsyncGenerator, NamedTuple
+from typing import Any, Type, TypeVar, AsyncGenerator, NamedTuple, Union
 from collections import namedtuple
 from pydantic import ValidationError, Field
 from .shared import *
@@ -21,9 +21,14 @@ class BaseEngine:
     @staticmethod
     async def results_cursor(cursor) -> NamedTuple:
         Result = namedtuple('Result', ['item', 'count'])
-        count = await cursor.count()
+        try:
+            count = await cursor.count()
+        except AttributeError as e:
+            count = len(await cursor.to_list())
         async for result in cursor:
-            yield Result(item=result, count=count)
+            r = Result(item=result, count=count)
+            print(r)
+            yield r
 
     # VIEW methods
     async def embed_maker(self, item: Optional[Any] = None, private: Optional[bool] = False) -> list[discord.Embed]:
@@ -38,7 +43,7 @@ class BaseEngine:
         """ Returns a default DashboardView, with default Embed, and both Done and Back buttons
          When subclassing call super and then add_item() for the extra buttons for each engine. """
         dashboard = DashboardView(msg=msg, prev=prev, text=text, engine=engine)
-        dashboard.add_item(DoneButton()).add_item(BackButton())
+        dashboard.add_item(DoneButton()).add_item(BackButton(next=prev))
         return dashboard
 
     async def find_by_modal(self, inter, search_function: Callable, items: Optional = None) -> AsyncGenerator:
@@ -52,13 +57,21 @@ class BaseEngine:
 
     async def carousel(self, *,
                        msg=None,
+                       count: int,
+                       embeds: list,
+                       first_item: Type[B] = None,
                        prev: Optional[Awaitable] = None,
-                       first: Optional[NamedTuple] = None,
                        generator: AsyncGenerator = None,
                        engine: Optional[E] = None) -> CarouselView:
         """ Returs a Carousel View """
-        carousel = CarouselView(msg=msg, prev=prev, first=first, generator=generator, engine=engine)
-        carousel.add_item(DoneButton()).add_item(BackButton())
+        carousel = CarouselView(msg=msg,
+                                prev=prev,
+                                count=count,
+                                embeds=embeds,
+                                first_item=first_item,
+                                generator=generator,
+                                engine=engine)
+        carousel.add_item(DoneButton()).add_item(BackButton(next=prev))
         return carousel
 
     async def get_by(self, *args, **kwargs):

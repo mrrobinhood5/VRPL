@@ -97,13 +97,21 @@ class TeamEngine(BaseEngine):
 
     async def carousel(self, *,
                        msg=None,
+                       count: int,
+                       embeds: list,
+                       first_item: Type[B] = None,
                        prev: Optional[Awaitable] = None,
-                       first: Optional[NamedTuple] = None,
                        generator: AsyncGenerator = None,
                        engine: Optional[E] = None) -> CarouselView:
-        carousel = await super().carousel(msg=msg, prev=prev, first=first, generator=generator, engine=self)
-        carousel.embeds = await self.embed_maker(first.item)
-        (carousel.add_item(UpdateButton()).add_item(DeleteButton()))
+        carousel = await super().carousel(msg=msg,
+                                          count=count,
+                                          embeds=embeds,
+                                          first_item=first_item,
+                                          prev=prev,
+                                          generator=generator,
+                                          engine=self)
+        (carousel.add_item(UpdateButton())
+                 .add_item(DeleteButton()))
         return carousel
 
     # NOTHING BELOW IS IMPLEMENTED

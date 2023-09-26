@@ -229,15 +229,23 @@ async def autocomplete_test():
     print(f'beanie loaded in {et-st}')
 
     from collections import namedtuple
+    async def results_cursor(cursor) -> NamedTuple:
+        Result = namedtuple('Result', ['item', 'count'])
+        try:
+            count = await cursor.count()
+        except AttributeError as e:
+            count = len(await cursor.to_list())
+        async for result in cursor:
+            yield Result(item=result, count=count)
+    from beanie import PydanticObjectId
+    one = PydanticObjectId("64fbf0de348c944c4a50736c")
+    results = await (TeamBase.find(TeamBase.id == one, with_children=True)
+                    .aggregate([{'$addFields': {'members':{'$slice': ['$members', 2]}}}], projection_model=TeamBase)
+                    .to_list())
 
-    team = await TeamBase.find({}, with_children=True).first_or_none()
-    iii = In('_id', [p.ref.id for p in team.members])
-    print(iii)
-    members = await PlayerBase.find(iii, with_children=True).to_list()
-    print(members)
-    x = [f"`{member.name}{' - Captain`' if isinstance(member, CaptainPlayer) else ' - CoCaptain`' if isinstance(member, CoCaptainPlayer) else '`'}" for member in members]
-    print('\n'.join(x))
-
+    pipeline = Pipeline().match({'_id': one}).add_fields({'members':{'$slice':['$members', 2]}}).export()
+    results = await TeamBase.find({}, with_children=True).aggregate(pipeline, projection_model=TeamBase).to_list()
+    print(results)
 
 if __name__ == "__main__":
     asyncio.run(autocomplete_test())

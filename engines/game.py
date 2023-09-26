@@ -7,7 +7,7 @@ from models.games import GameBase, AllTeamNamesByGame, Game
 from pydantic import ValidationError, BaseModel
 from typing import TypeVar, Type, Optional, Literal, Callable, Any, Union, AsyncGenerator, NamedTuple
 from beanie.operators import RegEx
-from discord import Interaction
+from monggregate import Pipeline
 
 B = TypeVar('B', bound=GameBase)
 E = TypeVar('E', bound=BaseEngine)
@@ -20,17 +20,16 @@ class GameNames(BaseModel):
 class GameEngine(BaseEngine):
     base = GameBase
 
-    async def embed_maker(self, item: Optional[NamedTuple] = None, private: Optional[bool] = False) -> list[discord.Embed]:
+    async def embed_maker(self, item: Type[B] = None, private: Optional[bool] = False) -> list[discord.Embed]:
 
         if not item:
             embed = discord.Embed(title="Games Dashboard", description="Options for managing League Games")
-            embed.set_thumbnail(url='https://i.imgur.com/VwQoXMB.png')
+            embed.set_thumbnail(url='https://i.imgur.com/VwQoXMB.png') # TODO: I left of here, gonna make games more like all other engines to use get_by and fix this embed
         else:
-            item = item.item
             embed = discord.Embed(title=item.name, description=item.description)
             # embed.set_thumbnail(url=item.thumbnail) if item.thumbnail else 0
             embed.set_thumbnail(url='https://i.imgur.com/VwQoXMB.png')
-            teams = ''.join([f"`{team}` " for team in item.teams])
+            teams = ''.join([f"`{team.name}` " for team in item.teams])
             embed.add_field(name='Teams', value=teams)
             if private:
                 embed = embed  # TODO: make private embed of Games
@@ -43,7 +42,7 @@ class GameEngine(BaseEngine):
                         engine: Optional[E] = None) -> discord.ui.View:
         dashboard = await super().dashboard(msg=msg, prev=prev, text=text, engine=self)
         dashboard.embeds = await self.embed_maker()
-        (dashboard.add_item(FindButton(engine=self, search_function=self.get_teams_by_game))
+        (dashboard.add_item(FindButton(engine=self, search_function=self.get_by))
          .add_item(CreateButton())
          .add_item(UpdateButton())
          .add_item(DeleteButton()))
@@ -62,39 +61,38 @@ class GameEngine(BaseEngine):
 
     async def carousel(self, *,
                        msg=None,
+                       count: int,
+                       embeds: list,
+                       first_item: Type[B] = None,
                        prev: Optional[Awaitable] = None,
-                       first: Optional[NamedTuple] = None,
                        generator: AsyncGenerator = None,
                        engine: Optional[E] = None) -> CarouselView:
-        carousel = await super().carousel(msg=msg, prev=prev, first=first, generator=generator, engine=self)
-        carousel.embeds = await self.embed_maker(first)
+        carousel = await super().carousel(msg=msg,
+                                          count=count,
+                                          embeds=embeds,
+                                          first_item=first_item,
+                                          prev=prev,
+                                          generator=generator,
+                                          engine=self)
+        # carousel.embeds = await self.embed_maker(first)
         (carousel.add_item(UpdateButton())
          .add_item(DeleteButton()))
         return carousel
 
     # NOTHING BELOW IS IMPLEMENTED
-    async def get_by(self, name: Optional[str] = None,
-                     output: Optional[SearchOutputType] = SearchOutputType.NoLinksToList) -> Optional[Union[list[B], B]]:
-        """ Used to do a query """ # TODO: I dont think this is uused
+    async def get_by(self, name: Optional[str] = None) -> AsyncGenerator:
+        """ Used to do a query """ # TODO: rewirte to use this instead of teams by game
         base = GameEngine.base
         search = base.find({}, with_children=True)
 
         if name:
-            search = search.find(RegEx(base.name, f'(?i){name}'))
+            search = search.find(RegEx(base.name, name, 'i'))
+        pipeline = (Pipeline()
+                    .lookup(right="TeamBase", left_on='_id', right_on='game.$id', name='teams')
+                    .export())
+        return self.results_cursor(search.aggregate(pipeline, projection_model=base))
 
-        match output:
-            case SearchOutputType.WithLinksToList:
-                return await search.find(fetch_links=True).to_list()
-            case SearchOutputType.NoLinksToList:
-                return await search.to_list()
-            case SearchOutputType.WithLinksOnlyOne:
-                return await search.find(fetch_links=True).first_or_none()
-            case SearchOutputType.NoLinksOnlyOne:
-                return await search.first_or_none()
-            case SearchOutputType.OnlyNames:
-                return await search.project(GameNames).to_list()
-            case _:
-                return await search.to_list()
+
 
     async def create_game(self, base: Type[B] = Game, **kwargs) -> Type[B]:
         try:

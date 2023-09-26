@@ -22,8 +22,8 @@ class AdminEngine(BaseEngine):
                   engine: Optional[E] = None) -> discord.ui.View:
         dashboard = await super().dashboard(msg, prev, text, self)
         dashboard.embeds = await self.embed_maker()
-        (dashboard.add_item(DashButton(label='Games', next=self.bot.ge))
-                  .add_item(DashButton(label='Players', next=self.bot.pe))
-                  .add_item(DashButton(label='Teams', next=self.bot.te)))
+        (dashboard.add_item(DashButton(label='Games', next=self.bot.ge, prev=self.dashboard))
+                  .add_item(DashButton(label='Players', next=self.bot.pe, prev=self.dashboard))
+                  .add_item(DashButton(label='Teams', next=self.bot.te, prev=self.dashboard)))
         return dashboard
 

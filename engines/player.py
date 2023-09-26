@@ -26,7 +26,7 @@ class PlayerEngine(BaseEngine):
             embed = discord.Embed(title=item.name, description=item.game_uid)
             # thumbnail needs discord bot access
             # user = self.bot.get_user(item.discord_id)  # TODO: since its an async now, you can probably use fetch
-            user = await self.bot.fetch_user(item.discord_id)
+            user = self.bot.get_user(item.discord_id)
             embed.set_thumbnail(url=user.display_avatar.url) if user else 0
             # all other fields
             embed.add_field(name='Registered Height', value=item.height, inline=True)
@@ -34,7 +34,8 @@ class PlayerEngine(BaseEngine):
             embed.add_field(name='suspended', value=item.is_suspended, inline=True)
             embed.add_field(name='banned', value=item.is_banned)
             # Resolve the teams and games
-            item.teams = await TeamBase.find(In(*ElemMatch('members',{}),[item.to_ref()]), with_children=True).to_list()
+            item.teams = await TeamBase.find(In(*ElemMatch('members', {}), [item.to_ref()]),
+                                             with_children=True).to_list()
             for team in item.teams:
                 team.game = await GameBase.get(team.game.ref.id, with_children=True)
             embed.add_field(name='teams', value=''.join([f'`{team.game.name} - {team.name}`' for team in item.teams]),
@@ -69,16 +70,15 @@ class PlayerEngine(BaseEngine):
         return results
 
     def get_by(self, *,
-                     name: Optional[str] = None,
-                     discord_member: Optional[int] = None,
-                     game: Optional[GameBase] = None,
-                     location: Optional[str] = None,
-                     banned: Optional[bool] = None,
-                     suspended: Optional[bool] = None,
-                     captain: Optional[Union[bool, str]] = None,
-                     co_captain: Optional[Union[bool, str]] = None,
-                     team: Optional[Union[TeamBase, str]] = None,
-                     output: Optional[SearchOutputType] = SearchOutputType.NoLinksToList) -> AsyncGenerator:
+               name: Optional[str] = None,
+               discord_member: Optional[int] = None,
+               game: Optional[GameBase] = None,
+               location: Optional[str] = None,
+               banned: Optional[bool] = None,
+               suspended: Optional[bool] = None,
+               captain: Optional[Union[bool, str]] = None,
+               co_captain: Optional[Union[bool, str]] = None,
+               team: Optional[Union[TeamBase, str]] = None) -> AsyncGenerator:
         # dashboard searches is name, game, location, banned, captain,
         if captain:
             base = CaptainPlayer
@@ -88,48 +88,62 @@ class PlayerEngine(BaseEngine):
             base = PlayerEngine.base
 
         search = base.find({}, with_children=True)
+        pipeline = []
 
         if name:
-            search = search.find(RegEx(base.name, f'(?i){name}'))
+            search = search.find(RegEx(base.name, name, 'i'))
         if discord_member:
             search = search.find(Eq(base.discord_id, discord_member))
-        if game:
+        if game:  # Games is a list of Link
             # game = await GameBase.find(RegEx(GameBase.name, f'(?i){game}'), with_children=True).first_or_none()
             # TODO: need to find a way for ^^ this to search game names inside players via aggregate
-            search = search.find(ElemMatch(base.games, {'$in': [game]}))
+            search = search.aggregate(Pipeline()
+                                      .lookup(right="GameBase", left_on='games.$id', right_on="_id", name='games')
+                                      .match(**RegEx('games.name', game, 'i'))
+                                      .export())
+            # search = search.find(ElemMatch(base.games, {'$in': [game]}))
         if team:  # need to write if team is passed by str
-            if isinstance(team, str):
-                search = search.find(ElemMatch(base.teams, {'name': {'$regex': f'(?i){team}'}}))
+            if isinstance(team, str):  # using the modal here
+
+                pipeline = (Pipeline()
+                            .lookup(right="TeamBase", left_on='_id', right_on='members.$id', name="teams")
+                            .match(**ElemMatch('teams', **RegEx('name', team, 'i')))
+                            .export())
                 # search = search.find(ElemMatch(base.teams, RegEx(TeamBase.name, f'(?i){name}')))
-            else:
+            else:  # using the API here
                 search = search.find(ElemMatch(base.teams, {'$in': [team]}))
         if location:
             # if you got a search phrase, parse it.
             search = search.find(RegEx(base.location, f'(?i){location}'))
             # search = search.find(Eq(base.location, location))
-        if banned is not None:
+        if not banned:
             flag = True if banned.lower() in ["yes", "true", "y", "1", "affirmative", "ok", "okay",
                                               "positive"] else False
             search = search.find(Eq(base.is_banned, flag))
         if suspended is not None:
             search = search.find(Eq(base.is_suspended, True))
 
-        return self.results_cursor(search)
-
+        return self.results_cursor(search.aggregate(pipeline, projection_model=PlayerBase))
 
     async def carousel(self, *,
                        msg=None,
+                       count: int,
+                       embeds: list,
+                       first_item: Type[B] = None,
                        prev: Optional[Awaitable] = None,
-                       first: Optional[NamedTuple] = None,
                        generator: AsyncGenerator = None,
                        engine: Optional[E] = None) -> CarouselView:
-        """ Used to return a Carousel"""
-        carousel = await super().carousel(msg=msg, prev=prev, first=first, generator=generator, engine=self)
-        carousel.embeds = await self.embed_maker(first.item)
+        """ Used to return a Carousel """
+        carousel = await super().carousel(msg=msg,
+                                          count=count,
+                                          embeds=embeds,
+                                          first_item=first_item,
+                                          prev=prev,
+                                          generator=generator,
+                                          engine=self)
         (carousel.add_item(UpdateButton())
-         .add_item(DeleteButton()))
+                 .add_item(DeleteButton()))
         return carousel
-
 
     # NOTHING BELOW IS IMPLEMENTED
     @property

@@ -47,13 +47,14 @@ class BannedInput(discord.ui.TextInput):
 
 #BUTTONS
 class DashButton(discord.ui.Button):
-    def __init__(self, label: str, next: Awaitable):
+    def __init__(self, label: str, next: Awaitable, prev=Awaitable):
         super().__init__(label=label, style=discord.ButtonStyle.green)
         self.next = next
+        self.prev = prev
 
     async def callback(self, inter: Interaction) -> Any:
         await inter.response.defer()
-        self.view.next = self.next.dashboard(prev=self.view.engine.dashboard, msg=self.view.msg)
+        self.view.next = self.next.dashboard(prev=self.prev, msg=self.view.msg)
         self.view.stop()
 
 class InfoButton(discord.ui.Button):
@@ -83,7 +84,7 @@ class ControlButton(discord.ui.Button):
                     self.view.items.append(item.item)
                     self.view.item_index += 1
                 except StopAsyncIteration as e:
-                    self.view.item_index = (self.view.item_index + 1) % self.view.item_count
+                    self.view.item_index = (self.view.item_index + 1) % self.view.item_count # roll
 
             else: # its not the last item
                 self.view.item_index += 1
@@ -93,8 +94,6 @@ class ControlButton(discord.ui.Button):
         self.view.counter.label = f'{self.view.item_index + 1} of {self.view.item_count}'
         # await self.view.update_view(inter, self.view.item)
         await self.view.msg.edit(embeds=await self.view.engine.embed_maker(self.view.item), view=self.view)
-
-
 
 class FindButton(discord.ui.Button):
     def __init__(self, *, engine , search_function: Callable):
@@ -106,17 +105,19 @@ class FindButton(discord.ui.Button):
         await self.view.msg.edit(content='Accessing FindBy', embed=None, view=None)
         results = await self.engine.find_by_modal(inter, self.search_function)
 
-        # TODO: Making results an AsyncGenerator loses the capability to know if its empty or not, so the back function is not gonna work like this
         try:
             first = await anext(results)
+            print(f'From FindButton callback, after the find_by_modal, first is : {first}')
         except StopAsyncIteration as e:
-            first = None
-        if not first:
-            self.view.next = self.engine.dashboard(msg=self.view.msg, prev=self.view.prev, text='No results Found')
+            self.view.next = self.engine.dashboard(msg=self.view.msg, prev=self.view.prev, text='No Results Found')
         else:
-            self.view.next = self.engine.carousel(msg=self.view.msg, first=first, generator=results, prev=self.view.engine.dashboard)
-        # this is what needs to be as previous
-        #
+            self.view.next = self.engine.carousel(msg=self.view.msg,
+                                                  count=first.count,
+                                                  embeds=await self.engine.embed_maker(first.item),
+                                                  first_item=first.item,
+                                                  prev=self.view.engine.dashboard,
+                                                  generator=results)
+
         self.view.stop()
 
 class CreateButton(discord.ui.Button):
@@ -160,14 +161,15 @@ class DoneButton(discord.ui.Button):
         await self.view.msg.delete()
 
 class BackButton(discord.ui.Button):
-    def __init__(self):
+    def __init__(self, next=Awaitable):
         super().__init__(custom_id='back_button', style=discord.ButtonStyle.gray, label='Back', row=2)
+        self.next = next
 
     async def callback(self, inter: Interaction):
         await inter.response.defer()
+
+        self.view.next = self.next(msg=self.view.msg)
         self.view.stop()
-        self.view.next = self.view.prev
-        await self.view.msg.delete()
 
 # VIEWS
 class DashboardView(discord.ui.View):
@@ -215,17 +217,20 @@ class CarouselView(DashboardView):
     def __init__(self, *,
                  msg: discord.WebhookMessage,
                  prev: Optional[Awaitable] = None,
-                 first: Optional[NamedTuple] = None,
+                 count: int,
+                 embeds: list,
+                 first_item: Any,
                  generator: AsyncGenerator,
                  engine: Optional[None]):
         super().__init__(msg=msg, prev=prev, engine=engine)
-        self.items: list[Any] = [first]
+        self.embeds = embeds
+        self.items: list[Any] = [first_item]
         self.generator = generator
         self.item_index = 0
-        self.item_count = first.count
+        self.item_count = count
         self.timeout = None
         self.previous = ControlButton(action='previous')
-        self.counter = InfoButton(label=f'1 of {first.count}')
+        self.counter = InfoButton(label=f'1 of {self.item_count}')
         self.next = ControlButton(action='next')
 
         self.add_item(self.previous).add_item(self.counter).add_item(self.next)
