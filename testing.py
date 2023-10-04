@@ -2,6 +2,10 @@ import asyncio
 import pprint
 import random
 from datetime import timedelta
+from functools import wraps
+
+import discord
+import iso3166
 
 from utils import all_models
 from database import Database
@@ -30,7 +34,7 @@ async def reset_db(db, collection = None):
 
 def generate_player(game):
     return {'games': [game], 'discord_id': next(ids), 'name': generate_username(), 'game_uid': generate_guid(),
-            'height': randrange(4, 6), 'location': random.choice(list(Location))}
+            'height': randrange(4, 6), 'location': random.choice([c.name for c in iso3166.countries])}
 
 
 def generate_team(game, captain):
@@ -136,42 +140,52 @@ async def main():
     ge = GameEngine()
 
     models = all_models()
+
+    st = time.time()
     await init_beanie(database=db, document_models=models)
+    et = time.time()
+    print(f'beanie loaded in {et - st}')
+
 
     # create a game
-    game = await ge.create_game(name="Contractors")
+    game = await ge.create_function(document={'name': "Contractors"}, base=Game)
 
     # create Players if there are none already
     if not await pe.count(PlayerBase):
         for _ in range(40):
             await pe.register_player(**generate_player(game))
-    players = await pe.get_all(PlayerBase)
+    players = pe.get_by()
 
     # make a teams if no teams already exists
     if not await te.count(TeamBase):
-        for player in players[:8]:
-            captain = await pe.make_captain(player)
+        for _ in range(8):
+            c = await anext(players)
+            captain = await pe.make_captain(c.item)
             await te.register_team(**generate_team(game, captain))
 
-        normal_players = await pe.get_all(NormalPlayer)
-        teams = await te.get_all(TeamBase)
+        normal_players = pe.get_by()
+        teams = te.get_by()
 
-        for team in teams:
-            co_cap = await pe.make_co_captain(normal_players.pop())
-            await te.add_player(team, co_cap)
+        for x in range(await te.count(TeamBase)):
+            p = await anext(normal_players)
+            team = await anext(teams)
+            co_cap = await pe.make_co_captain(p.item)
+            await te.add_player(team=team.item, player=co_cap)
             for _ in range(3):
-                await te.add_player(team, normal_players.pop())
+                p = await anext(normal_players)
+                await te.add_player(team.item, p.item)
 
-    games = await ge.get_all(GameBase, f={'name': 'Contractor$'})
-    for game in games:
-        assert len(game.players) == 40
-        assert len(game.teams) == 8
+    games = ge.get_by(name='Contractors')
+    for _ in range(await ge.count()):
+        game = await anext(games)
+        assert len(game.item.players) == 40
+        assert len(game.item.teams) == 8
 
-    test_player = await pe.get_all(CaptainPlayer)
-    print(test_player[0].name)
-    test_player = test_player[0].name[2:5]
-    test_player = await pe.get_by_name(name=test_player)
-    print(test_player.name)
+    # test_player = pe.get_by(captain=True)
+    # print(anext(test_player.item).name)
+    # test_player = test_player[0].name[2:5]
+    # test_player = await pe.get_by_name(name=test_player)
+    # print(test_player.name)
 
 
 
@@ -215,37 +229,100 @@ async def main():
     #     async for approval in MatchDateApproval.find_all(with_children=True, fetch_links=True):
     #         await process_approval(approval)
 
-async def autocomplete_test():
+async def decorator_test():
+    # db = Database().db
+
+    # pe = PlayerEngine()
+    # te = TeamEngine()
+    # ge = GameEngine()
+
+
+    # models = all_models()
+
+
+
+    # st = time.time()
+    # await init_beanie(database=db, document_models=[Player], recreate_views=True)
+    # et = time.time()
+    # print(f'beanie loaded in {et-st}')
+
+    class Engine:
+
+        @staticmethod
+        def dashboard(child_dashboard):
+            print(f'ONE # Ran when defined. variables here acutally go into the wrapper')
+            a = 'a'
+            @wraps(child_dashboard)
+            async def wrapped_dashboard(self, /, *args, **kwargs):
+                dashboard = discord.ui.View()
+                dashboard.add_item(discord.ui.Button(label='Back'))
+                print('FOUR # inside of method wrapper, calling the implemented method')
+                dashboard = await child_dashboard(self, *args, **kwargs, dashboard=dashboard)
+                print(f'SIX # returned from implemented method')
+                print(f'a is {a}')
+                return dashboard
+
+
+            return wrapped_dashboard
+
+    class GameEngine(Engine):
+
+        def embed_maker(self) -> discord.Embed:
+            embed = discord.Embed(title='test', description='test')
+            return embed
+
+        @Engine.dashboard
+        async def dashboard(self, /, dashboard: discord.ui.View,  *args, **kwargs, ) -> discord.ui.View:
+            print('FIVE # inside the implemented method')
+            embed = self.embed_maker()
+            dashboard.embed = embed
+            dashboard.add_item(discord.ui.Button(label='Games'))
+
+            return dashboard
+
+    print('TWO # Right before instantiating the class')
+    g = GameEngine()
+    print(f'THREE # class instantiated, running the wrapped method')
+    h = await g.dashboard(text='Custom Text')
+    print(f'SEVEN # returned to main, from the call to the wrapped method')
+    pprint.pp(h.children)
+    pprint.pp(h.embed.to_dict())
+
+    # order of things should be:
+    # 1. call super dash and get a View instance
+    # 2. superdash adds two buttons
+    # 3. call class embeed maker to set default embed
+    # 4. add child buttons
+    # 5. return completed View
+
+async def current_test():
     db = Database().db
 
-    pe = PlayerEngine()
-    te = TeamEngine()
-    ge = GameEngine()
+    # pe = PlayerEngine()
+    # te = TeamEngine()
+    # ge = GameEngine()
 
-    models = all_models()
+
+    # models = all_models()
+
+    class Todo(Document):
+        description: str
+
+    class TodoItem(Document):
+        order: int
+        todo: Link[Todo]
+
+    class TodoList(Document):
+        owner: str
+        todos: List[TodoItem]
+
+
+
     st = time.time()
-    await init_beanie(database=db, document_models=models, recreate_views=True)
+    await init_beanie(database=db, document_models=[Todo, TodoList, TodoItem], recreate_views=True)
     et = time.time()
     print(f'beanie loaded in {et-st}')
 
-    from collections import namedtuple
-    async def results_cursor(cursor) -> NamedTuple:
-        Result = namedtuple('Result', ['item', 'count'])
-        try:
-            count = await cursor.count()
-        except AttributeError as e:
-            count = len(await cursor.to_list())
-        async for result in cursor:
-            yield Result(item=result, count=count)
-    from beanie import PydanticObjectId
-    one = PydanticObjectId("64fbf0de348c944c4a50736c")
-    results = await (TeamBase.find(TeamBase.id == one, with_children=True)
-                    .aggregate([{'$addFields': {'members':{'$slice': ['$members', 2]}}}], projection_model=TeamBase)
-                    .to_list())
-
-    pipeline = Pipeline().match({'_id': one}).add_fields({'members':{'$slice':['$members', 2]}}).export()
-    results = await TeamBase.find({}, with_children=True).aggregate(pipeline, projection_model=TeamBase).to_list()
-    print(results)
 
 if __name__ == "__main__":
-    asyncio.run(autocomplete_test())
+    asyncio.run(main())

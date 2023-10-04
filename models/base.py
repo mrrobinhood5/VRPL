@@ -1,6 +1,9 @@
+import difflib
+
+import iso3166
 from beanie import Document, Indexed, BackLink, Link
 from typing import Optional, List, Union, Type
-from pydantic import confloat, EmailStr, AnyUrl, Field, HttpUrl, BaseModel, AnyHttpUrl
+from pydantic import confloat, EmailStr, AnyUrl, Field, HttpUrl, BaseModel, AnyHttpUrl, field_validator, ValidationError
 from pydantic_core import Url
 from models.enums import Location, Region, MapTypes, TournamentParticipation
 from datetime import datetime
@@ -12,12 +15,17 @@ def url_to_str(v: Url):
 
 
 class VRPLObject(Document):
-    pass
+    @field_validator('*', mode='before')
+    def empty_str_to_none(cls, v):
+        if v == '':
+            return None
+        return v
 
 
 class GameBase(VRPLObject):
     name: str
     description: Optional[str] = None
+    thumbnail: Optional[AnyUrl] = None
     link: Optional[AnyUrl] = None
 
     players: Optional[list[BackLink['PlayerBase']]] = Field(default_factory=list, original_field='games')
@@ -36,7 +44,7 @@ class PlayerBase(VRPLObject):
     name: Indexed(str, unique=True)
     game_uid: Optional[Indexed(str, unique=True)] = None
     height: Optional[confloat(ge=4.0, le=6.0)] = None
-    location: Location
+    location: Union[Location, str] # TODO: maybe not an enum, Just normalize it?
     registered_on: datetime = datetime.now()
     alias: Optional[list[str]] = Field(default_factory=list)
     promo_email: Optional[EmailStr] = None
@@ -53,6 +61,16 @@ class PlayerBase(VRPLObject):
     @property
     def mmr(self):
         return False
+
+    @field_validator('location', mode='before')
+    def validate_country(cls, v):
+        if isinstance(v, str):
+            c = difflib.get_close_matches(v, [x.name for x in iso3166.countries])
+            if c:
+                return c[0]
+        if isinstance(v, Location):
+            return v
+        raise ValidationError('Not a valid country')
 
     class Settings:
         is_root = True

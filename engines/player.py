@@ -1,3 +1,5 @@
+import pprint
+
 from engines import *
 from engines.base import BaseEngine
 from engines.shared import *
@@ -5,6 +7,7 @@ from models import *
 from pydantic import ValidationError
 from typing import Type, TypeVar, Callable
 from beanie.operators import RegEx, In, Eq, ElemMatch
+from beanie import PydanticObjectId
 
 B = TypeVar('B', bound=PlayerBase)
 E = TypeVar('E', bound=BaseEngine)
@@ -17,22 +20,29 @@ class PlayerNames(BaseModel):
 class PlayerEngine(BaseEngine):
     base = PlayerBase
 
-    async def embed_maker(self, item: Type[B] = None, private: Optional[bool] = False) -> list[discord.Embed]:
-
+    @BaseEngine.embed_maker
+    async def embed_maker(self,
+                          embeds: Embeds,
+                          item: Type[B] = None,
+                          private: Optional[bool] = False) -> list[discord.Embed]:
         if not item:
-            embed = discord.Embed(title="Players Dashboard", description="Options for managing League Players")
-            embed.set_thumbnail(url='https://i.imgur.com/VwQoXMB.png')
+            embed = embeds.public
+            embed.title="Players Dashboard"
+            embed.description="Options for managing League Players"
+            return [embed]
         else:
-            embed = discord.Embed(title=item.name, description=item.game_uid)
+            embed = embeds.public
+            embed.title = item.name
+            embed.description = f'`{item.game_uid}`'
             # thumbnail needs discord bot access
             # user = self.bot.get_user(item.discord_id)  # TODO: since its an async now, you can probably use fetch
             user = self.bot.get_user(item.discord_id)
             embed.set_thumbnail(url=user.display_avatar.url) if user else 0
             # all other fields
-            embed.add_field(name='Registered Height', value=item.height, inline=True)
-            embed.add_field(name='location', value=item.location.value, inline=True)
-            embed.add_field(name='suspended', value=item.is_suspended, inline=True)
-            embed.add_field(name='banned', value=item.is_banned)
+            embed.add_field(name='Registered Height', value=f'`{item.height}`', inline=True)
+            embed.add_field(name='location', value=f'`{item.location}`', inline=True)
+            embed.add_field(name='suspended', value=f'`{item.is_suspended}`', inline=True)
+            embed.add_field(name='banned', value=f'`{item.is_banned}`')
             # Resolve the teams and games
             item.teams = await TeamBase.find(In(*ElemMatch('members', {}), [item.to_ref()]),
                                              with_children=True).to_list()
@@ -47,30 +57,64 @@ class PlayerEngine(BaseEngine):
             embed.set_footer(text=f'Registered on VRPL on {item.registered_on}')
 
             if private:
-                embed = embed  # TODO: make private embed of Player
+                pembed = embeds.private  # TODO: make private embed of Player
+                return [embed, pembed]
         return [embed]
 
-    async def dashboard(self,
-                        msg: Optional[discord.WebhookMessage] = None,
-                        prev: Optional = None,
-                        text: Optional[str] = None,
-                        engine: Optional[E] = None) -> discord.ui.View:
-        dashboard = await super().dashboard(msg=msg, prev=prev, text=text, engine=self)
+    @BaseEngine.dashboard
+    async def dashboard(self, /, dashboard: discord.ui.View, *args, **kwargs) -> discord.ui.View:
         dashboard.embeds = await self.embed_maker()
         (dashboard.add_item(FindButton(engine=self, search_function=self.get_by))
-         .add_item(CreateButton())
+         .add_item(CreateButton(engine=self, search_function=self.get_by))
          .add_item(UpdateButton())
          .add_item(DeleteButton()))
         return dashboard
 
-    async def find_by_modal(self, inter, search_function: Callable, items: Optional = None) -> AsyncGenerator:
+    @BaseEngine.find_by_modal
+    async def find_by_modal(self, /, modal: discord.ui.Modal) -> discord.ui.Modal:
         """ used to return a Modal Instance """
-        items = [NameInput(), LocationInput(), TeamInput(), CaptainInput(), BannedInput()]
-        results = await super().find_by_modal(inter, search_function, items)
-        return results
+        items = [StandardInput(label='name', placeholder='Leave blank for ALL'),
+                 StandardInput(label='location', placeholder='Leave blank for ALL'),
+                 StandardInput(label='team', placeholder='Leave blank for ALL'),
+                 StandardInput(label='captain', placeholder='yes or no or BLANK for ALL'),
+                 StandardInput(label='banned', placeholder='yes or no or BLANK for ALL')]
+        [modal.add_item(x) for x in items]
+        return modal
 
+
+    def user_picker(self, /, *args, **kwargs) -> discord.ui.View:
+        view = discord.ui.View()
+        select = UserSelect()
+        view.add_item(select)
+        return view
+
+    @BaseEngine.create_modal
+    async def create_modal(self, /,
+                           modal: discord.ui.Modal,
+                           inter: discord.Interaction) -> discord.ui.Modal:
+        picker = self.user_picker()
+        await inter.channel.send(content='', view=picker, delete_after=30)
+        await picker.wait()
+        print(picker.results)
+        results=picker.results[0]
+        items = [StandardInput(label='name', placeholder=f'{results.name}'), # TODO: make the user picker
+                 StandardInput(label='game_uid', placeholder='Enter Game UID'),
+                 StandardInput(label='height', placeholder='from 4.0 to 6.0'),
+                 StandardInput(label='location', placeholder='Enter your country')]
+        [modal.add_item(x) for x in items]
+        return modal
+
+    @BaseEngine.carousel
+    async def carousel(self, /, carousel: CarouselView) -> CarouselView:
+        """ Used to return a Carousel """
+        (carousel.add_item(UpdateButton())
+                 .add_item(DeleteButton()))
+        return carousel
+
+    # SEARCH Methods
     def get_by(self, *,
                name: Optional[str] = None,
+               id: Optional[PydanticObjectId] = None,
                discord_member: Optional[int] = None,
                game: Optional[GameBase] = None,
                location: Optional[str] = None,
@@ -78,7 +122,7 @@ class PlayerEngine(BaseEngine):
                suspended: Optional[bool] = None,
                captain: Optional[Union[bool, str]] = None,
                co_captain: Optional[Union[bool, str]] = None,
-               team: Optional[Union[TeamBase, str]] = None) -> AsyncGenerator:
+               team: Optional[Union[TeamBase, str]] = None) -> Result:
         # dashboard searches is name, game, location, banned, captain,
         if captain:
             base = CaptainPlayer
@@ -89,20 +133,18 @@ class PlayerEngine(BaseEngine):
 
         search = base.find({}, with_children=True)
         pipeline = []
-
+        if id:
+            search = search.find(Eq(base.id, id))
         if name:
             search = search.find(RegEx(base.name, name, 'i'))
         if discord_member:
             search = search.find(Eq(base.discord_id, discord_member))
         if game:  # Games is a list of Link
-            # game = await GameBase.find(RegEx(GameBase.name, f'(?i){game}'), with_children=True).first_or_none()
-            # TODO: need to find a way for ^^ this to search game names inside players via aggregate
             search = search.aggregate(Pipeline()
                                       .lookup(right="GameBase", left_on='games.$id', right_on="_id", name='games')
                                       .match(**RegEx('games.name', game, 'i'))
                                       .export())
-            # search = search.find(ElemMatch(base.games, {'$in': [game]}))
-        if team:  # need to write if team is passed by str
+        if team:
             if isinstance(team, str):  # using the modal here
 
                 pipeline = (Pipeline()
@@ -116,34 +158,19 @@ class PlayerEngine(BaseEngine):
             # if you got a search phrase, parse it.
             search = search.find(RegEx(base.location, f'(?i){location}'))
             # search = search.find(Eq(base.location, location))
-        if not banned:
-            flag = True if banned.lower() in ["yes", "true", "y", "1", "affirmative", "ok", "okay",
-                                              "positive"] else False
-            search = search.find(Eq(base.is_banned, flag))
+        if banned:
+            search = search.find(Eq(base.is_banned, banned))
         if suspended is not None:
             search = search.find(Eq(base.is_suspended, True))
 
         return self.results_cursor(search.aggregate(pipeline, projection_model=PlayerBase))
 
-    async def carousel(self, *,
-                       msg=None,
-                       count: int,
-                       embeds: list,
-                       first_item: Type[B] = None,
-                       prev: Optional[Awaitable] = None,
-                       generator: AsyncGenerator = None,
-                       engine: Optional[E] = None) -> CarouselView:
-        """ Used to return a Carousel """
-        carousel = await super().carousel(msg=msg,
-                                          count=count,
-                                          embeds=embeds,
-                                          first_item=first_item,
-                                          prev=prev,
-                                          generator=generator,
-                                          engine=self)
-        (carousel.add_item(UpdateButton())
-                 .add_item(DeleteButton()))
-        return carousel
+
+
+    async def create_function(self, document: dict, **kwargs):
+        base = NormalPlayer
+        team = super().create_function(self, base=base, document=document)
+        return team
 
     # NOTHING BELOW IS IMPLEMENTED
     @property
@@ -169,6 +196,8 @@ class PlayerEngine(BaseEngine):
     async def make_captain(self, player: NormalPlayer) -> CaptainPlayer:
         """ This should only be called by the Team Engine, or Admin Engine  """
         try:
+            # gotta get the games link
+            player.games = [await Game.get(game.ref.id) for game in player.games]
             captain = CaptainPlayer(**player.dict())
             (await player.delete(), await captain.insert())
             return captain
